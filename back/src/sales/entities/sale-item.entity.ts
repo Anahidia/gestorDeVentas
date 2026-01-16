@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from "typeorm"
-import { Sale } from "../../sales/entities/sale.entity"
+import { Sale } from "./sale.entity"
 import { Product } from "../../products/entities/product.entity"
 
 @Entity("sale_items")
@@ -35,4 +35,7 @@ export class SaleItem {
 
   @Column("decimal", { precision: 10, scale: 2 })
   subtotal: number
+
+  @Column({ nullable: true })
+  talle?: string
 }

@@ -8,6 +8,10 @@ class SaleItemDto {
   @IsInt()
   @Min(1)
   cantidad: number
+
+  @IsString()
+  @IsOptional()
+  talle?: string
 }
 
 export class CreateSaleDto {

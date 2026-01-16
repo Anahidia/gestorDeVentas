@@ -1,12 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from "@nestjs/common"
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common"
 import { InjectRepository } from "@nestjs/typeorm"
-import type { Repository } from "typeorm"
+import { Repository } from "typeorm"
 import { Product } from "./entities/product.entity"
-import type { CreateProductDto } from "./dto/create-product.dto"
-import type { UpdateProductDto } from "./dto/update-product.dto"
-import { OrdersService } from "src/orders/orders.service"
-import cloudinary from "../config/cloudinary.config" // 🔹 importa la config de Cloudinary
-import fs from "fs"
+import { ProductSize } from "./entities/product-size.entity"
+import { CreateProductDto } from "./dto/create-product.dto"
+import { UpdateProductDto } from "./dto/update-product.dto"
 
 @Injectable()
 export class ProductsService {
@@ -14,71 +12,75 @@ export class ProductsService {
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
 
-    @Inject(forwardRef(() => OrdersService))
-    private readonly ordersService: OrdersService,
+    @InjectRepository(ProductSize)
+    private readonly productSizesRepository: Repository<ProductSize>,
   ) {}
 
-  // Crear producto con imagen opcional
-  async create(createProductDto: CreateProductDto, file?: Express.Multer.File): Promise<Product> {
+  async create(createProductDto: CreateProductDto): Promise<Product> {
     console.log("[v0] Creating product:", createProductDto)
 
-    // 🔹 Subir imagen a Cloudinary si hay archivo
-    let imagenUrl: string | undefined
-    if (file) {
-      try {
-        const result = await cloudinary.uploader.upload(file.path)
-        imagenUrl = result.secure_url
-      } catch (error) {
-        console.error("Error subiendo imagen a Cloudinary:", error)
-      } finally {
-        // 🔹 borrar archivo local
-        fs.unlink(file.path, () => {})
-      }
-    }
+    const { talles, ...productData } = createProductDto
+    const product = this.productsRepository.create(productData)
 
-    const product = this.productsRepository.create({
-      ...createProductDto,
-      ...(imagenUrl && { imagenUrl }), // solo si existe
-    })
+    if (talles && talles.length > 0) {
+      product.talles = talles.map((t) => this.productSizesRepository.create(t))
+    }
 
     const saved = await this.productsRepository.save(product)
     console.log("[v0] Product created:", saved)
     return saved
   }
 
-  async findAll(includeInactive = false): Promise<Product[]> {
-    const where = includeInactive ? {} : { isActive: true }
-    return this.productsRepository.find({
-      where,
-      order: { nombre: "ASC" },
-    })
+  async findAll(includeInactive = false, categoryId?: string, search?: string, talle?: string): Promise<Product[]> {
+    const query = this.productsRepository
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.category", "category")
+      .leftJoinAndSelect("product.talles", "talles")
+
+    if (!includeInactive) {
+      query.where("product.isActive = :isActive", { isActive: true })
+    }
+
+    if (categoryId) {
+      query.andWhere("product.categoryId = :categoryId", { categoryId })
+    }
+
+    if (search) {
+      query.andWhere("(product.nombre ILIKE :search OR product.descripcion ILIKE :search)", { search: `%${search}%` })
+    }
+
+    if (talle) {
+      query.andWhere("talles.talle = :talle", { talle })
+    }
+
+    return query.orderBy("product.nombre", "ASC").getMany()
   }
 
   async findOne(id: string): Promise<Product> {
     console.log("[v0] Finding product with id:", id)
-    const product = await this.productsRepository.findOne({ where: { id } })
+    const product = await this.productsRepository.findOne({
+      where: { id },
+      relations: ["category", "talles"],
+    })
     if (!product) {
       throw new NotFoundException("Producto no encontrado")
     }
     return product
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto, file?: Express.Multer.File): Promise<Product> {
+  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
     const product = await this.findOne(id)
 
-    // 🔹 Subir nueva imagen si hay archivo
-    if (file) {
-      try {
-        const result = await cloudinary.uploader.upload(file.path)
-        updateProductDto.imagenUrl = result.secure_url
-      } catch (error) {
-        console.error("Error subiendo imagen a Cloudinary:", error)
-      } finally {
-        fs.unlink(file.path, () => {})
-      }
+    const { talles, ...productData } = updateProductDto as any
+    Object.assign(product, productData)
+
+    if (talles) {
+      // Eliminar talles existentes
+      await this.productSizesRepository.delete({ productoId: id })
+      // Crear nuevos talles
+      product.talles = talles.map((t: any) => this.productSizesRepository.create(t))
     }
 
-    Object.assign(product, updateProductDto)
     return this.productsRepository.save(product)
   }
 
@@ -95,6 +97,74 @@ export class ProductsService {
       throw new BadRequestException("Stock no puede ser negativo")
     }
     return this.productsRepository.save(product)
+  }
+
+  async updateSizeStock(productoId: string, talle: string, cantidad: number): Promise<ProductSize> {
+    const size = await this.productSizesRepository.findOne({
+      where: { productoId, talle },
+    })
+
+    if (!size) {
+      throw new NotFoundException(`Talle ${talle} no encontrado`)
+    }
+
+    size.stock += cantidad
+    if (size.stock < 0) {
+      throw new BadRequestException("Stock no puede ser negativo")
+    }
+
+    return this.productSizesRepository.save(size)
+  }
+
+  async reserveSizeStock(productoId: string, talle: string, cantidad: number): Promise<ProductSize> {
+    const size = await this.productSizesRepository.findOne({
+      where: { productoId, talle },
+    })
+
+    if (!size) {
+      throw new NotFoundException(`Talle ${talle} no encontrado`)
+    }
+
+    if (size.stock - size.stockReservado < cantidad) {
+      throw new BadRequestException(`Stock insuficiente para talle ${talle}`)
+    }
+
+    size.stockReservado += cantidad
+    return this.productSizesRepository.save(size)
+  }
+
+  async releaseSizeStock(productoId: string, talle: string, cantidad: number): Promise<ProductSize> {
+    const size = await this.productSizesRepository.findOne({
+      where: { productoId, talle },
+    })
+
+    if (!size) {
+      throw new NotFoundException(`Talle ${talle} no encontrado`)
+    }
+
+    size.stockReservado -= cantidad
+    if (size.stockReservado < 0) {
+      size.stockReservado = 0
+    }
+
+    return this.productSizesRepository.save(size)
+  }
+
+  async decreaseSizeStock(productoId: string, talle: string, cantidad: number): Promise<ProductSize> {
+    const size = await this.productSizesRepository.findOne({
+      where: { productoId, talle },
+    })
+
+    if (!size) {
+      throw new NotFoundException(`Talle ${talle} no encontrado`)
+    }
+
+    if (size.stock < cantidad) {
+      throw new BadRequestException(`Stock insuficiente para talle ${talle}`)
+    }
+
+    size.stock -= cantidad
+    return this.productSizesRepository.save(size)
   }
 
   async reserveStock(id: string, cantidad: number): Promise<Product> {

@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, forwardRef, Inject } from "@nestjs/common"
-import { Repository } from "typeorm"
-import { Sale } from "./entities/sale.entity"
-import { SaleItem } from "./entities/sale-item.entity"
-import { ProductsService } from "../products/products.service"
-import { CreateSaleDto } from "./dto/create-sale.dto"
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common"
+import  { Repository } from "typeorm"
+import  { Sale } from "./entities/sale.entity"
+import  { SaleItem } from "./entities/sale-item.entity"
+import  { ProductsService } from "../products/products.service"
+import  { CreateSaleDto } from "./dto/create-sale.dto"
 import { SaleStatus } from "./entities/sale.entity"
 import { InjectRepository } from "@nestjs/typeorm"
 
@@ -14,30 +14,28 @@ export class SalesService {
     private salesRepository: Repository<Sale>,
     @InjectRepository(SaleItem)
     private saleItemsRepository: Repository<SaleItem>,
-    @Inject(forwardRef(() => ProductsService))
     private productsService: ProductsService,
   ) {}
 
-  // =======================
-  // CREAR VENTA
-  // =======================
   async create(createSaleDto: CreateSaleDto, vendedorId: string): Promise<Sale> {
-    if (!createSaleDto.items || createSaleDto.items.length === 0) {
-      throw new BadRequestException("No se enviaron productos para la venta")
-    }
-
-    // Verificar stock disponible
     for (const item of createSaleDto.items) {
       const product = await this.productsService.findOne(item.productoId)
-      if (!product) {
-        throw new NotFoundException(`Producto con ID ${item.productoId} no encontrado`)
-      }
-      if (product.stock < item.cantidad) {
-        throw new BadRequestException(`Stock insuficiente para ${product.nombre}`)
+
+      if (item.talle) {
+        // Verificar stock del talle específico
+        const size = product.talles?.find((t) => t.talle === item.talle)
+        if (!size || size.stock < item.cantidad) {
+          throw new BadRequestException(`Stock insuficiente para ${product.nombre} talle ${item.talle}`)
+        }
+      } else {
+        // Verificar stock general
+        if (product.stock < item.cantidad) {
+          throw new BadRequestException(`Stock insuficiente para ${product.nombre}`)
+        }
       }
     }
 
-    // Crear items y calcular total
+    // Calcular total y crear items
     let total = 0
     const saleItems: SaleItem[] = []
 
@@ -50,12 +48,17 @@ export class SalesService {
         cantidad: item.cantidad,
         precioUnitario: product.precio,
         subtotal,
+        talle: item.talle,
       })
+
       saleItems.push(saleItem)
       total += subtotal
 
-      // Decrementar stock y guardar
-      await this.productsService.decreaseStock(item.productoId, item.cantidad)
+      if (item.talle) {
+        await this.productsService.decreaseSizeStock(item.productoId, item.talle, item.cantidad)
+      } else {
+        await this.productsService.decreaseStock(item.productoId, item.cantidad)
+      }
     }
 
     // Crear venta
@@ -70,9 +73,6 @@ export class SalesService {
     return this.salesRepository.save(sale)
   }
 
-  // =======================
-  // OBTENER TODAS LAS VENTAS
-  // =======================
   async findAll(): Promise<Sale[]> {
     return this.salesRepository.find({
       relations: ["vendedor", "items", "items.producto"],
@@ -80,9 +80,6 @@ export class SalesService {
     })
   }
 
-  // =======================
-  // OBTENER VENTAS POR VENDEDOR
-  // =======================
   async findByVendedor(vendedorId: string): Promise<Sale[]> {
     return this.salesRepository.find({
       where: { vendedorId },
@@ -91,23 +88,19 @@ export class SalesService {
     })
   }
 
-  // =======================
-  // OBTENER VENTA POR ID
-  // =======================
   async findOne(id: string): Promise<Sale> {
     const sale = await this.salesRepository.findOne({
       where: { id },
       relations: ["vendedor", "items", "items.producto"],
     })
+
     if (!sale) {
       throw new NotFoundException("Venta no encontrada")
     }
+
     return sale
   }
 
-  // =======================
-  // CANCELAR VENTA
-  // =======================
   async cancel(id: string): Promise<Sale> {
     const sale = await this.findOne(id)
 
@@ -115,18 +108,18 @@ export class SalesService {
       throw new BadRequestException("La venta ya está cancelada")
     }
 
-    // Devolver stock
     for (const item of sale.items) {
-      await this.productsService.updateStock(item.productoId, item.cantidad)
+      if (item.talle) {
+        await this.productsService.updateSizeStock(item.productoId, item.talle, item.cantidad)
+      } else {
+        await this.productsService.updateStock(item.productoId, item.cantidad)
+      }
     }
 
     sale.status = SaleStatus.CANCELADA
     return this.salesRepository.save(sale)
   }
 
-  // =======================
-  // ESTADÍSTICAS
-  // =======================
   async getStats() {
     const sales = await this.salesRepository.find({
       where: { status: SaleStatus.COMPLETADA },

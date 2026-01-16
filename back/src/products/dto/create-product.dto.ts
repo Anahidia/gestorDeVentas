@@ -1,4 +1,14 @@
-import { IsString, IsNumber, IsOptional, Min, IsUrl } from "class-validator"
+import { IsString, IsNumber, IsOptional, Min, IsUrl, IsArray, ValidateNested, IsUUID } from "class-validator"
+import { Type } from "class-transformer"
+
+class CreateProductSizeDto {
+  @IsString()
+  talle: string
+
+  @IsNumber()
+  @Min(0)
+  stock: number
+}
 
 export class CreateProductDto {
   @IsString()
@@ -18,5 +28,15 @@ export class CreateProductDto {
 
   @IsUrl()
   @IsOptional()
-  imagenUrl?: string 
+  imagenUrl?: string
+
+  @IsUUID()
+  @IsOptional()
+  categoryId?: string
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductSizeDto)
+  @IsOptional()
+  talles?: CreateProductSizeDto[]
 }

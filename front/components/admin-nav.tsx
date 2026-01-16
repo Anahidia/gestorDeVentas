@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
-import { Package, ShoppingCart, ClipboardList, BarChart3, LogOut } from "lucide-react"
+import { Package, ShoppingCart, ClipboardList, BarChart3, LogOut, FolderOpen } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function AdminNav() {
@@ -20,6 +20,7 @@ export function AdminNav() {
   const navItems = [
     { href: "/admin", label: "Dashboard", icon: BarChart3 },
     { href: "/admin/products", label: "Productos", icon: Package },
+    { href: "/admin/categorias", label: "Categorías", icon: FolderOpen },
     { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
     { href: "/admin/encargos", label: "Encargos", icon: ClipboardList },
   ]

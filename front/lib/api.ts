@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
 export class ApiClient {
   private token: string | null = null
@@ -27,10 +27,10 @@ export class ApiClient {
   private async request(endpoint: string, options: RequestInit = {}) {
     const token = this.getToken()
 
-    const headers = new Headers(options.headers)
-    headers.set("Content-Type", "application/json")
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`)
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -39,14 +39,21 @@ export class ApiClient {
     })
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Error desconocido" }))
+      const error = await response.json().catch(() => ({
+        message: "Error desconocido",
+      }))
       throw new Error(error.message || "Error en la petición")
+    }
+
+    // Para DELETE o respuestas sin body
+    if (response.status === 204) {
+      return null
     }
 
     return response.json()
   }
 
-  // Auth
+  // ================= AUTH =================
   async login(email: string, password: string) {
     const data = await this.request("/auth/login", {
       method: "POST",
@@ -69,9 +76,15 @@ export class ApiClient {
     return this.request("/auth/profile")
   }
 
-  // Products
-  async getProducts() {
-    return this.request("/products")
+  // ================= PRODUCTS =================
+  async getProducts(filters?: { categoryId?: string; search?: string; talle?: string }) {
+    const params = new URLSearchParams()
+    if (filters?.categoryId) params.append("categoryId", filters.categoryId)
+    if (filters?.search) params.append("search", filters.search)
+    if (filters?.talle) params.append("talle", filters.talle)
+
+    const queryString = params.toString()
+    return this.request(`/products${queryString ? `?${queryString}` : ""}`)
   }
 
   async getProduct(id: string) {
@@ -105,7 +118,36 @@ export class ApiClient {
     })
   }
 
-  // Sales
+  // ================= CATEGORIES =================
+  async getCategories() {
+    return this.request("/categories")
+  }
+
+  async getCategory(id: string) {
+    return this.request(`/categories/${id}`)
+  }
+
+  async createCategory(data: { nombre: string }) {
+    return this.request("/categories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateCategory(id: string, data: { nombre: string }) {
+    return this.request(`/categories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteCategory(id: string) {
+    return this.request(`/categories/${id}`, {
+      method: "DELETE",
+    })
+  }
+
+  // ================= SALES =================
   async getSales() {
     return this.request("/sales")
   }
@@ -135,7 +177,7 @@ export class ApiClient {
     return this.request("/sales/stats")
   }
 
-  // Orders
+  // ================= ORDERS =================
   async getOrders() {
     return this.request("/orders")
   }
@@ -175,7 +217,7 @@ export class ApiClient {
     return this.request("/orders/stats")
   }
 
-  // Users
+  // ================= USERS =================
   async getUsers() {
     return this.request("/users")
   }

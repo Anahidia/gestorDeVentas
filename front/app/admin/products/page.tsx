@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Pencil, Trash2, X, Loader2 } from "lucide-react"
+import { Plus, Pencil, Trash2, X, Loader2, Sparkles, CheckCircle2 } from "lucide-react"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dropzone } from "@/components/ui/dropzone"
 
 export default function ProductosPage() {
   const toast = useToast()
@@ -61,21 +62,42 @@ export default function ProductosPage() {
   }, [])
 
   const handleAddTalle = () => {
-    if (newTalle.talle && newTalle.stock) {
-      setTalles([...talles, { talle: newTalle.talle, stock: Number(newTalle.stock) }])
+    if (newTalle.talle.trim() && newTalle.stock !== "") {
+      const normalizedTalle = newTalle.talle.trim().toUpperCase()
+      const newStock = Math.max(0, Number(newTalle.stock) || 0)
+
+      // Upsert: si ya existe el talle, se reemplaza su stock
+      const existingIndex = talles.findIndex(
+        (t) => t.talle.trim().toUpperCase() === normalizedTalle
+      )
+
+      let updatedTalles = []
+      if (existingIndex > -1) {
+        updatedTalles = [...talles]
+        updatedTalles[existingIndex] = { talle: normalizedTalle, stock: newStock }
+        toast.info(`Stock de talle ${normalizedTalle} actualizado a ${newStock}`, "Talle Actualizado")
+      } else {
+        updatedTalles = [...talles, { talle: normalizedTalle, stock: newStock }]
+        toast.info(`Talle ${normalizedTalle} añadido (${newStock} unidades)`, "Talle Agregado")
+      }
+
+      setTalles(updatedTalles)
+
+      // Sincronizar automáticamente el Stock General
+      const totalStock = updatedTalles.reduce((sum, t) => sum + t.stock, 0)
+      setFormData((prev) => ({ ...prev, stock: String(totalStock) }))
+
       setNewTalle({ talle: "", stock: "" })
     }
   }
 
   const handleRemoveTalle = (index: number) => {
-    setTalles(talles.filter((_, i) => i !== index))
-  }
+    const updatedTalles = talles.filter((_, i) => i !== index)
+    setTalles(updatedTalles)
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setImageFile(file)
-      setImagePreview(URL.createObjectURL(file))
+    if (updatedTalles.length > 0) {
+      const totalStock = updatedTalles.reduce((sum, t) => sum + t.stock, 0)
+      setFormData((prev) => ({ ...prev, stock: String(totalStock) }))
     }
   }
 
@@ -84,11 +106,16 @@ export default function ProductosPage() {
     setSubmitting(true)
 
     try {
+      const calculatedStock =
+        talles.length > 0
+          ? talles.reduce((sum, t) => sum + t.stock, 0)
+          : Number(formData.stock) || 0
+
       const form = new FormData()
       form.append("nombre", formData.nombre)
       form.append("descripcion", formData.descripcion)
       form.append("precio", formData.precio)
-      form.append("stock", formData.stock)
+      form.append("stock", String(calculatedStock))
 
       if (formData.categoryId && formData.categoryId !== "0") {
         form.append("categoryId", formData.categoryId)
@@ -126,18 +153,23 @@ export default function ProductosPage() {
 
   const handleEdit = (product: any) => {
     setEditingProduct(product)
+    const productTalles = product.talles
+      ? product.talles.map((t: any) => ({ talle: t.talle, stock: t.stock }))
+      : []
+
+    const calculatedStock =
+      productTalles.length > 0
+        ? productTalles.reduce((sum: number, t: any) => sum + t.stock, 0)
+        : product.stock
+
     setFormData({
       nombre: product.nombre || "",
       descripcion: product.descripcion || "",
       precio: product.precio ? String(product.precio) : "",
-      stock: product.stock ? String(product.stock) : "",
+      stock: String(calculatedStock || 0),
       categoryId: product.categoryId || product.category?.id || "0",
     })
-    setTalles(
-      product.talles
-        ? product.talles.map((t: any) => ({ talle: t.talle, stock: t.stock }))
-        : []
-    )
+    setTalles(productTalles)
     setImageFile(null)
     setImagePreview(product.imagenUrl || "")
     setIsDialogOpen(true)
@@ -194,7 +226,7 @@ export default function ProductosPage() {
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="border-violet-500/20 bg-[#0d071b] text-slate-100 max-w-lg backdrop-blur-2xl">
+          <DialogContent className="border-violet-500/20 bg-[#0d071b] text-slate-100 max-w-lg backdrop-blur-2xl max-h-[85vh] overflow-y-auto pr-3">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold bg-gradient-to-r from-white via-violet-200 to-blue-400 bg-clip-text text-transparent">
                 {editingProduct ? "Editar Producto" : "Nuevo Producto"}
@@ -257,35 +289,63 @@ export default function ProductosPage() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs text-violet-200">Stock General *</Label>
+                  <Label className="text-xs text-violet-200 flex items-center justify-between">
+                    <span>Stock General *</span>
+                    {talles.length > 0 && (
+                      <span className="text-[10px] text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-700/40">
+                        Auto por talles
+                      </span>
+                    )}
+                  </Label>
                   <Input
                     type="number"
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                     required
-                    className="border-violet-500/20 bg-violet-950/40 text-xs text-white"
+                    disabled={talles.length > 0}
+                    readOnly={talles.length > 0}
+                    className={`border-violet-500/20 text-xs text-white ${
+                      talles.length > 0
+                        ? "bg-cyan-950/20 border-cyan-500/30 text-cyan-200 font-bold"
+                        : "bg-violet-950/40"
+                    }`}
                   />
                 </div>
               </div>
 
+              {/* Talles Section */}
               <div className="flex flex-col gap-2 rounded-xl border border-violet-500/20 bg-violet-900/10 p-3">
-                <Label className="text-xs text-violet-200 font-semibold">Talles (opcional)</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-violet-200 font-semibold">Talles y Cantidades</Label>
+                  {talles.length > 0 && (
+                    <span className="text-[11px] text-cyan-300 font-semibold">
+                      Total por talles: {talles.reduce((sum, t) => sum + t.stock, 0)} u.
+                    </span>
+                  )}
+                </div>
+
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Ej: S, M, L"
+                    placeholder="Ej: 4, S, M, L"
                     value={newTalle.talle}
                     onChange={(e) => setNewTalle({ ...newTalle, talle: e.target.value })}
                     className="border-violet-500/20 bg-violet-950/40 text-xs text-white"
                   />
                   <Input
                     type="number"
-                    placeholder="Stock"
+                    min="0"
+                    placeholder="Cantidad"
                     value={newTalle.stock}
                     onChange={(e) => setNewTalle({ ...newTalle, stock: e.target.value })}
                     className="w-24 border-violet-500/20 bg-violet-950/40 text-xs text-white"
                   />
-                  <Button type="button" onClick={handleAddTalle} size="sm" className="bg-violet-700 hover:bg-violet-600">
-                    <Plus className="h-4 w-4" />
+                  <Button
+                    type="button"
+                    onClick={handleAddTalle}
+                    size="sm"
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 font-semibold text-xs"
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Cargar
                   </Button>
                 </div>
 
@@ -294,11 +354,16 @@ export default function ProductosPage() {
                     {talles.map((t, index) => (
                       <span
                         key={index}
-                        className="flex items-center gap-1.5 rounded-lg bg-violet-950 border border-violet-700 px-2 py-1 text-xs text-violet-200"
+                        className="flex items-center gap-1.5 rounded-lg bg-violet-950/80 border border-cyan-500/40 px-2.5 py-1 text-xs font-bold text-white shadow-md"
                       >
-                        {t.talle}: {t.stock}
-                        <button type="button" onClick={() => handleRemoveTalle(index)} className="text-red-400 hover:text-red-300">
-                          <X className="h-3 w-3" />
+                        <span className="text-cyan-300 font-mono">{t.talle}:</span>
+                        <span>{t.stock} u.</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTalle(index)}
+                          className="text-rose-400 hover:text-rose-300 ml-1"
+                        >
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </span>
                     ))}
@@ -306,19 +371,21 @@ export default function ProductosPage() {
                 )}
               </div>
 
+              {/* Cloudinary Dropzone Component */}
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-violet-200">Imagen del Producto (Cloudinary)</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="border-violet-500/20 bg-violet-950/40 text-xs text-violet-300 cursor-pointer"
+                <Label className="text-xs text-violet-200 font-semibold">Imagen del Producto (Cloudinary)</Label>
+                <Dropzone
+                  onFileSelect={(file) => {
+                    setImageFile(file)
+                    if (file) {
+                      setImagePreview(URL.createObjectURL(file))
+                    } else {
+                      setImagePreview("")
+                    }
+                  }}
+                  currentImage={imagePreview}
+                  label={formData.nombre || "Imagen del Producto"}
                 />
-                {imagePreview && (
-                  <div className="relative mt-2 h-36 w-full rounded-xl overflow-hidden border border-violet-500/30">
-                    <Image src={imagePreview} alt="Preview" fill className="object-cover" />
-                  </div>
-                )}
               </div>
 
               <Button

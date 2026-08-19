@@ -7,6 +7,7 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { UsersModule } from "../users/users.module";
+import { CloudinaryService } from "../config/cloudinary.service";
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { UsersModule } from "../users/users.module";
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, JwtStrategy, CloudinaryService],
+  exports: [AuthService, JwtModule, CloudinaryService],
 })
 export class AuthModule {}

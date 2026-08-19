@@ -2,20 +2,24 @@
 
 import React, { useEffect, useState } from "react"
 import { api } from "@/lib/api"
+import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Pencil, Trash2, X } from "lucide-react"
+import { Plus, Pencil, Trash2, X, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function ProductosPage() {
+  const toast = useToast()
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<any>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>("")
@@ -77,6 +81,7 @@ export default function ProductosPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitting(true)
 
     try {
       const form = new FormData()
@@ -99,8 +104,10 @@ export default function ProductosPage() {
 
       if (editingProduct) {
         await api.updateProduct(editingProduct.id, form)
+        toast.success("Producto actualizado correctamente", "Producto Actualizado")
       } else {
         await api.createProduct(form)
+        toast.success("Nuevo producto añadido al inventario", "Producto Creado")
       }
 
       setIsDialogOpen(false)
@@ -110,9 +117,10 @@ export default function ProductosPage() {
       setFormData({ nombre: "", descripcion: "", precio: "", stock: "", categoryId: "" })
       setTalles([])
       loadProducts()
-    } catch (error) {
-      console.error(error)
-      alert("Error al guardar el producto")
+    } catch (error: any) {
+      toast.error(error.message || "Error al guardar el producto", "Error")
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -136,13 +144,15 @@ export default function ProductosPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Estás seguro de eliminar este producto?")) return
+    setDeletingId(id)
     try {
       await api.deleteProduct(id)
+      toast.success("Producto eliminado del inventario", "Eliminado")
       loadProducts()
-    } catch (error) {
-      console.error("Error deleting product:", error)
-      alert("Error al eliminar el producto")
+    } catch (error: any) {
+      toast.error(error.message || "Error al eliminar el producto", "Error")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -150,7 +160,8 @@ export default function ProductosPage() {
     return (
       <div className="flex h-96 items-center justify-center text-violet-300">
         <div className="flex flex-col items-center gap-3">
-          <p className="text-sm font-medium animate-pulse">Cargando productos...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
+          <p className="text-sm font-medium">Cargando catálogo de productos...</p>
         </div>
       </div>
     )
@@ -310,8 +321,20 @@ export default function ProductosPage() {
                 )}
               </div>
 
-              <Button type="submit" className="mt-2 bg-gradient-to-r from-violet-600 to-indigo-600 font-semibold text-white rounded-xl">
-                {editingProduct ? "Guardar Cambios" : "Crear Producto"}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="mt-2 bg-gradient-to-r from-violet-600 to-indigo-600 font-semibold text-white rounded-xl"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Guardando...
+                  </>
+                ) : editingProduct ? (
+                  "Guardar Cambios"
+                ) : (
+                  "Crear Producto"
+                )}
               </Button>
             </form>
           </DialogContent>
@@ -373,9 +396,11 @@ export default function ProductosPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleDelete(product.id)}
+                disabled={deletingId === product.id}
                 className="flex-1 text-xs text-rose-300 bg-rose-950/20 hover:bg-rose-900/30 rounded-xl border border-rose-800/30"
               >
-                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Eliminar
+                {deletingId === product.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+                Eliminar
               </Button>
             </div>
           </div>

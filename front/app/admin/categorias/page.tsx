@@ -3,17 +3,21 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
+import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, Pencil, Trash2, FolderOpen } from "lucide-react"
+import { Plus, Pencil, Trash2, FolderOpen, Loader2 } from "lucide-react"
 
 export default function CategoriasPage() {
+  const toast = useToast()
   const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<any>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({ nombre: "" })
 
   useEffect(() => {
@@ -25,7 +29,7 @@ export default function CategoriasPage() {
       setLoading(true)
       const data = await api.getCategories()
       setCategories(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading categories:", error)
     } finally {
       setLoading(false)
@@ -34,18 +38,23 @@ export default function CategoriasPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSubmitting(true)
     try {
       if (editingCategory) {
         await api.updateCategory(editingCategory.id, formData)
+        toast.success("Categoría actualizada correctamente", "Categoría Guardada")
       } else {
         await api.createCategory(formData)
+        toast.success("Nueva categoría creada exitosamente", "Categoría Creada")
       }
       setIsDialogOpen(false)
       setFormData({ nombre: "" })
       setEditingCategory(null)
       loadCategories()
     } catch (error: any) {
-      alert(error.message || "Error al guardar la categoría")
+      toast.error(error.message || "Error al guardar la categoría", "Error")
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -56,12 +65,15 @@ export default function CategoriasPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Estás seguro de eliminar esta categoría?")) return
+    setDeletingId(id)
     try {
       await api.deleteCategory(id)
+      toast.success("Categoría eliminada", "Eliminado")
       loadCategories()
     } catch (error: any) {
-      alert(error.message || "Error al eliminar la categoría")
+      toast.error(error.message || "Error al eliminar la categoría", "Error")
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -69,7 +81,7 @@ export default function CategoriasPage() {
     return (
       <div className="flex h-96 items-center justify-center text-violet-300">
         <div className="flex flex-col items-center gap-3">
-          <FolderOpen className="h-8 w-8 animate-bounce text-violet-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
           <p className="text-sm font-medium">Cargando categorías...</p>
         </div>
       </div>
@@ -117,8 +129,20 @@ export default function CategoriasPage() {
                   className="border-violet-500/20 bg-violet-950/40 text-xs text-white"
                 />
               </div>
-              <Button type="submit" className="mt-2 bg-gradient-to-r from-violet-600 to-indigo-600 font-semibold text-white rounded-xl">
-                {editingCategory ? "Actualizar" : "Crear"}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="mt-2 bg-gradient-to-r from-violet-600 to-indigo-600 font-semibold text-white rounded-xl"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Guardando...
+                  </>
+                ) : editingCategory ? (
+                  "Actualizar"
+                ) : (
+                  "Crear"
+                )}
               </Button>
             </form>
           </DialogContent>
@@ -149,11 +173,12 @@ export default function CategoriasPage() {
               </Button>
               <Button
                 onClick={() => handleDelete(category.id)}
+                disabled={deletingId === category.id}
                 size="sm"
                 variant="ghost"
                 className="h-8 w-8 p-0 text-rose-400 hover:bg-rose-950/40 rounded-lg"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                {deletingId === category.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
               </Button>
             </div>
           </div>

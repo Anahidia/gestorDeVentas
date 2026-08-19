@@ -17,21 +17,44 @@ export class UsersController {
     return this.usersService.findAll()
   }
 
-  @Get(':id')
+  @Get("business/:businessId")
   @Roles(UserRole.ADMIN)
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findByBusiness(@Param("businessId") businessId: string) {
+    return this.usersService.findByBusiness(businessId)
+  }
+
+  @Get(":id")
+  @Roles(UserRole.ADMIN)
+  findOne(@Param("id") id: string) {
+    return this.usersService.findOne(id)
+  }
+
+  @Patch(":id/shift")
+  toggleShift(@Param("id") id: string) {
+    return this.usersService.toggleShift(id)
+  }
+
+  @Patch(":id/department")
+  @Roles(UserRole.ADMIN)
+  updateDepartment(@Param("id") id: string, @Body() body: { departamento: string }) {
+    return this.usersService.updateDepartment(id, body.departamento)
+  }
+
+  @Patch(":id/code")
+  @Roles(UserRole.ADMIN)
+  updateEmployeeCode(@Param("id") id: string, @Body() body: { codigoEmpleado: string }) {
+    return this.usersService.updateEmployeeCode(id, body.codigoEmpleado)
   }
 
   @Patch(":id")
   @Roles(UserRole.ADMIN)
-  update(@Param('id') id: string, @Body() updateData: Partial<any>) {
+  update(@Param("id") id: string, @Body() updateData: Partial<any>) {
     return this.usersService.update(id, updateData)
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @Roles(UserRole.ADMIN)
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
+  remove(@Param("id") id: string) {
+    return this.usersService.remove(id)
   }
 }

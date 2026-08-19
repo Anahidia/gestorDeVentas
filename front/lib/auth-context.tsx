@@ -47,14 +47,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (token) {
           const profile = await api.getProfile()
           setUser(profile)
-          const savedBusiness = localStorage.getItem("business")
-          if (savedBusiness) {
-            setBusiness(JSON.parse(savedBusiness))
+          if (profile.business) {
+            setBusiness(profile.business)
           }
         }
       } catch (error) {
         api.clearToken()
         localStorage.removeItem("business")
+        setUser(null)
+        setBusiness(null)
       } finally {
         setLoading(false)
       }
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data.business) {
       setBusiness(data.business)
     }
+    return data.user
   }
 
   const registerAdmin = async (adminData: any) => {
@@ -77,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data.business) {
       setBusiness(data.business)
     }
+    return data.user
   }
 
   const registerEmployee = async (employeeData: any) => {
@@ -85,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data.business) {
       setBusiness(data.business)
     }
+    return data.user
   }
 
   const logout = () => {
@@ -94,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setBusiness(null)
   }
 
-  const isAdmin = user?.role === "admin"
+  const isAdmin = user?.role?.toLowerCase() === "admin"
 
   return (
     <AuthContext.Provider

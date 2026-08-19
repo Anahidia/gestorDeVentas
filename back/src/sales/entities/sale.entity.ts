@@ -14,6 +14,7 @@ import { SaleItem } from "./sale-item.entity"
 export enum SaleStatus {
   COMPLETADA = "completada",
   CANCELADA = "cancelada",
+  DEVUELTA = "devuelta",
 }
 
 @Entity("sales")

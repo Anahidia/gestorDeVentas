@@ -35,9 +35,39 @@ export class UsersService {
 
   async findAll(): Promise<User[]> {
     return this.usersRepository.find({
-      select: ["id", "email", "nombre", "telefono", "role", "isActive", "createdAt"],
+      select: ["id", "email", "nombre", "telefono", "role", "isActive", "departamento", "inShift", "lastCheckIn", "codigoEmpleado", "createdAt"],
       relations: ["business"],
+      order: { nombre: "ASC" },
     })
+  }
+
+  async findByBusiness(businessId: string): Promise<User[]> {
+    return this.usersRepository.find({
+      where: { businessId },
+      select: ["id", "email", "nombre", "telefono", "role", "isActive", "departamento", "inShift", "lastCheckIn", "codigoEmpleado", "createdAt"],
+      order: { nombre: "ASC" },
+    })
+  }
+
+  async toggleShift(id: string): Promise<User> {
+    const user = await this.findOne(id)
+    user.inShift = !user.inShift
+    if (user.inShift) {
+      user.lastCheckIn = new Date()
+    }
+    return this.usersRepository.save(user)
+  }
+
+  async updateDepartment(id: string, departamento: string): Promise<User> {
+    const user = await this.findOne(id)
+    user.departamento = departamento
+    return this.usersRepository.save(user)
+  }
+
+  async updateEmployeeCode(id: string, codigoEmpleado: string): Promise<User> {
+    const user = await this.findOne(id)
+    user.codigoEmpleado = codigoEmpleado
+    return this.usersRepository.save(user)
   }
 
   async findOne(id: string): Promise<User> {

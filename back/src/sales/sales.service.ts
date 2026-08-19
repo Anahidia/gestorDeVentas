@@ -122,19 +122,54 @@ export class SalesService {
     return this.salesRepository.save(sale)
   }
 
+  async refund(id: string): Promise<Sale> {
+    const sale = await this.findOne(id)
+
+    if (sale.status === SaleStatus.DEVUELTA) {
+      throw new BadRequestException("La venta ya fue devuelta previamente")
+    }
+
+    if (sale.status === SaleStatus.CANCELADA) {
+      throw new BadRequestException("No se puede devolver una venta cancelada")
+    }
+
+    for (const item of sale.items) {
+      if (item.talle) {
+        await this.productsService.updateSizeStock(item.productoId, item.talle, item.cantidad)
+        await this.productsService.updateStock(item.productoId, item.cantidad)
+      } else {
+        await this.productsService.updateStock(item.productoId, item.cantidad)
+      }
+    }
+
+    sale.status = SaleStatus.DEVUELTA
+    return this.salesRepository.save(sale)
+  }
+
   async getStats() {
-    const sales = await this.salesRepository.find({
-      where: { status: SaleStatus.COMPLETADA },
+    const allSales = await this.salesRepository.find({
       relations: ["items"],
     })
 
-    const totalVentas = sales.length
-    const totalIngresos = sales.reduce((sum, sale) => sum + Number(sale.total), 0)
-    const promedioVenta = totalVentas > 0 ? totalIngresos / totalVentas : 0
+    const completedSales = allSales.filter((s) => s.status === SaleStatus.COMPLETADA)
+    const refundedSales = allSales.filter((s) => s.status === SaleStatus.DEVUELTA)
+    const cancelledSales = allSales.filter((s) => s.status === SaleStatus.CANCELADA)
+
+    const totalVentas = completedSales.length
+    const totalDevoluciones = refundedSales.length
+    const totalIngresosBrutos = completedSales.reduce((sum, s) => sum + Number(s.total), 0)
+    const totalDevuelto = refundedSales.reduce((sum, s) => sum + Number(s.total), 0)
+    const totalIngresosNetos = totalIngresosBrutos - totalDevuelto
+    const promedioVenta = totalVentas > 0 ? totalIngresosNetos / totalVentas : 0
 
     return {
       totalVentas,
-      totalIngresos,
+      totalDevoluciones,
+      totalCanceladas: cancelledSales.length,
+      totalIngresosBrutos,
+      totalDevuelto,
+      totalIngresos: totalIngresosNetos,
+      totalIngresosNetos,
       promedioVenta,
     }
   }

@@ -10,6 +10,10 @@ export class CreateOrderDto {
 
   @IsString()
   @IsOptional()
+  talle?: string
+
+  @IsString()
+  @IsOptional()
   clienteNombre?: string
 
   @IsString()

@@ -22,6 +22,7 @@ export default function VendedorPage() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [orderForm, setOrderForm] = useState({
     cantidad: "1",
+    talle: "",
     clienteNombre: "",
     clienteTelefono: "",
     notas: "",
@@ -122,12 +123,13 @@ export default function VendedorPage() {
       await api.createOrder({
         productoId: selectedProduct.id,
         cantidad: Number.parseInt(orderForm.cantidad),
+        talle: orderForm.talle || undefined,
         clienteNombre: orderForm.clienteNombre,
         clienteTelefono: orderForm.clienteTelefono,
         notas: orderForm.notas,
       })
       setIsOrderDialogOpen(false)
-      setOrderForm({ cantidad: "1", clienteNombre: "", clienteTelefono: "", notas: "" })
+      setOrderForm({ cantidad: "1", talle: "", clienteNombre: "", clienteTelefono: "", notas: "" })
       alert("Encargo creado exitosamente")
     } catch (error: any) {
       alert(error.message || "Error al crear el encargo")
@@ -224,8 +226,9 @@ export default function VendedorPage() {
               key={product.id}
               product={product}
               onAddToCart={addToCart}
-              onCreateOrder={() => {
-                setSelectedProduct(product)
+              onCreateOrder={(prod, talle) => {
+                setSelectedProduct(prod)
+                setOrderForm((prev) => ({ ...prev, talle: talle || "" }))
                 setIsOrderDialogOpen(true)
               }}
             />
@@ -309,6 +312,26 @@ export default function VendedorPage() {
                 className="border-border bg-input"
               />
             </div>
+            {selectedProduct?.talles && selectedProduct.talles.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="orderTalle">Talle (Opcional)</Label>
+                <Select
+                  value={orderForm.talle}
+                  onValueChange={(val) => setOrderForm({ ...orderForm, talle: val })}
+                >
+                  <SelectTrigger id="orderTalle" className="h-9 text-sm border-border bg-input">
+                    <SelectValue placeholder="Seleccionar talle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedProduct.talles.map((t: any) => (
+                      <SelectItem key={t.id} value={t.talle}>
+                        {t.talle} (Stock: {t.stock - t.stockReservado})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               <Label htmlFor="clienteNombre">Nombre del Cliente</Label>
               <Input
@@ -353,7 +376,7 @@ function ProductCard({
 }: {
   product: any
   onAddToCart: (product: any, talle?: string) => void
-  onCreateOrder: () => void
+  onCreateOrder: (product: any, talle?: string) => void
 }) {
   const [selectedTalle, setSelectedTalle] = useState<string>("")
   const hasTalles = product.talles && product.talles.length > 0
@@ -432,7 +455,7 @@ function ProductCard({
             <Plus className="h-4 w-4" />
             Agregar
           </Button>
-          <Button onClick={onCreateOrder} variant="outline" size="sm" className="flex-1 gap-2 bg-transparent">
+          <Button onClick={() => onCreateOrder(product, selectedTalle)} variant="outline" size="sm" className="flex-1 gap-2 bg-transparent">
             <Package2 className="h-4 w-4" />
             Encargar
           </Button>

@@ -94,21 +94,9 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
 
     if (editingProduct) {
-      await fetch(`http://localhost:3001/products/${editingProduct.id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: form,
-      })
+      await api.updateProduct(editingProduct.id, form)
     } else {
-      await fetch("http://localhost:3001/products", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: form,
-      })
+      await api.createProduct(form)
     }
 
     setIsDialogOpen(false)

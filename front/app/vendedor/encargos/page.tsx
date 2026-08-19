@@ -69,7 +69,9 @@ export default function MisEncargosPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-foreground">{order.producto.nombre}</CardTitle>
-                    <p className="text-sm text-muted-foreground">Cantidad: {order.cantidad}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Cantidad: {order.cantidad} {order.talle ? `| Talle: ${order.talle}` : ""}
+                    </p>
                   </div>
                   <Badge
                     variant={

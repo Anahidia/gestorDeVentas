@@ -56,6 +56,7 @@ export class SalesService {
 
       if (item.talle) {
         await this.productsService.decreaseSizeStock(item.productoId, item.talle, item.cantidad)
+        await this.productsService.decreaseStock(item.productoId, item.cantidad)
       } else {
         await this.productsService.decreaseStock(item.productoId, item.cantidad)
       }
@@ -111,6 +112,7 @@ export class SalesService {
     for (const item of sale.items) {
       if (item.talle) {
         await this.productsService.updateSizeStock(item.productoId, item.talle, item.cantidad)
+        await this.productsService.updateStock(item.productoId, item.cantidad)
       } else {
         await this.productsService.updateStock(item.productoId, item.cantidad)
       }

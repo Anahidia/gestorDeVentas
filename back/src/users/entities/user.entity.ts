@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm"
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn } from "typeorm"
 import { Exclude } from "class-transformer"
 import { Sale } from "../../sales/entities/sale.entity"
+import { Business } from "./business.entity"
 
 export enum UserRole {
   ADMIN = "admin",
@@ -22,6 +23,9 @@ export class User {
   @Column()
   nombre: string
 
+  @Column({ nullable: true })
+  telefono: string
+
   @Column({
     type: "enum",
     enum: UserRole,
@@ -31,6 +35,13 @@ export class User {
 
   @Column({ default: true })
   isActive: boolean
+
+  @Column({ nullable: true })
+  businessId: string
+
+  @ManyToOne(() => Business, (business) => business.usuarios, { onDelete: "SET NULL" })
+  @JoinColumn({ name: "businessId" })
+  business: Business
 
   @OneToMany(
     () => Sale,

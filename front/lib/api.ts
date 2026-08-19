@@ -27,10 +27,17 @@ export class ApiClient {
   private async request(endpoint: string, options: RequestInit = {}) {
     const token = this.getToken()
 
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
+
+    if (!(options.body instanceof FormData)) {
+      headers["Content-Type"] = "application/json"
+    }
+
+    if (options.headers) {
+      Object.assign(headers, options.headers as Record<string, string>)
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
@@ -59,7 +66,12 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ email, password }),
     })
-    this.setToken(data.access_token)
+    if (data?.access_token) {
+      this.setToken(data.access_token)
+    }
+    if (typeof window !== "undefined" && data?.business) {
+      localStorage.setItem("business", JSON.stringify(data.business))
+    }
     return data
   }
 
@@ -68,7 +80,52 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify({ email, password, nombre, role }),
     })
-    this.setToken(data.access_token)
+    if (data?.access_token) {
+      this.setToken(data.access_token)
+    }
+    return data
+  }
+
+  async registerAdmin(adminData: {
+    email: string
+    password: string
+    nombre: string
+    telefono?: string
+    nombreNegocio: string
+    direccionNegocio?: string
+    telefonoNegocio?: string
+    logoUrl?: string
+  }) {
+    const data = await this.request("/auth/register-admin", {
+      method: "POST",
+      body: JSON.stringify(adminData),
+    })
+    if (data?.access_token) {
+      this.setToken(data.access_token)
+    }
+    if (typeof window !== "undefined" && data?.business) {
+      localStorage.setItem("business", JSON.stringify(data.business))
+    }
+    return data
+  }
+
+  async registerEmployee(employeeData: {
+    inviteCode: string
+    email: string
+    password: string
+    nombre: string
+    telefono?: string
+  }) {
+    const data = await this.request("/auth/register-employee", {
+      method: "POST",
+      body: JSON.stringify(employeeData),
+    })
+    if (data?.access_token) {
+      this.setToken(data.access_token)
+    }
+    if (typeof window !== "undefined" && data?.business) {
+      localStorage.setItem("business", JSON.stringify(data.business))
+    }
     return data
   }
 
@@ -92,16 +149,18 @@ export class ApiClient {
   }
 
   async createProduct(data: any) {
+    const isFormData = data instanceof FormData
     return this.request("/products", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     })
   }
 
   async updateProduct(id: string, data: any) {
+    const isFormData = data instanceof FormData
     return this.request(`/products/${id}`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     })
   }
 

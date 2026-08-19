@@ -23,10 +23,15 @@ import { Roles } from "../auth/decorators/roles.decorator"
 import { UserRole } from "../users/entities/user.entity"
 import  { Express } from "express"
 
+import { CloudinaryService } from "../config/cloudinary.service"
+
 @Controller("products")
 @UseGuards(JwtAuthGuard)
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -45,21 +50,27 @@ export class ProductsController {
       }),
     }),
   )
-  create(@Body() dto: any, @UploadedFile() file?: Express.Multer.File) {
-  if (file) {
-    dto.imagenUrl = `http://localhost:3001/uploads/${file.filename}`
+  async create(@Body() dto: any, @UploadedFile() file?: Express.Multer.File) {
+    if (file) {
+      try {
+        const result = await this.cloudinaryService.uploadImage(file)
+        dto.imagenUrl = result.secure_url
+      } catch (err) {
+        console.warn("Cloudinary upload failed, falling back to local storage:", err)
+        const port = process.env.PORT || 3001
+        dto.imagenUrl = `http://localhost:${port}/uploads/${file.filename}`
+      }
+    }
+
+    dto.precio = Number(dto.precio)
+    dto.stock = Number(dto.stock)
+
+    if (dto.talles && typeof dto.talles === "string") {
+      dto.talles = JSON.parse(dto.talles)
+    }
+
+    return this.productsService.create(dto)
   }
-
-  dto.precio = Number(dto.precio)
-  dto.stock = Number(dto.stock)
-
-  if (dto.talles) {
-    dto.talles = JSON.parse(dto.talles)
-  }
-
-  return this.productsService.create(dto)
-}
-
 
   @Get()
   findAll(
@@ -93,14 +104,28 @@ export class ProductsController {
       }),
     }),
   )
-  update(
+  async update(
     @Param("id") id: string,
-    @Body() updateProductDto: UpdateProductDto,
+    @Body() updateProductDto: UpdateProductDto | any,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     if (file) {
-      updateProductDto.imagenUrl = `http://localhost:3001/uploads/${file.filename}`
+      try {
+        const result = await this.cloudinaryService.uploadImage(file)
+        updateProductDto.imagenUrl = result.secure_url
+      } catch (err) {
+        console.warn("Cloudinary upload failed, falling back to local storage:", err)
+        const port = process.env.PORT || 3001
+        updateProductDto.imagenUrl = `http://localhost:${port}/uploads/${file.filename}`
+      }
     }
+
+    if (updateProductDto.precio) updateProductDto.precio = Number(updateProductDto.precio)
+    if (updateProductDto.stock) updateProductDto.stock = Number(updateProductDto.stock)
+    if (updateProductDto.talles && typeof updateProductDto.talles === "string") {
+      updateProductDto.talles = JSON.parse(updateProductDto.talles)
+    }
+
     return this.productsService.update(id, updateProductDto)
   }
 

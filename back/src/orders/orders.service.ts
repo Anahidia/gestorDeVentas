@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from "@nestjs/common"
-import type { Repository } from "typeorm"
+import { Repository } from "typeorm"
 import { LessThan } from "typeorm"
 import { Order } from "./entities/order.entity"
 import { OrderStatus } from "./entities/order.entity"
 import { ProductsService } from "../products/products.service"
-import type { CreateOrderDto } from "./dto/create-order.dto"
-import { InjectRepository } from '@nestjs/typeorm';
+import { CreateOrderDto } from "./dto/create-order.dto"
+import { InjectRepository } from "@nestjs/typeorm"
 
 @Injectable()
 export class OrdersService {
@@ -17,21 +17,27 @@ export class OrdersService {
     private readonly productsService: ProductsService,
   ) {}
 
-
-
   async create(createOrderDto: CreateOrderDto, vendedorId: string): Promise<Order> {
     const product = await this.productsService.findOne(createOrderDto.productoId)
 
-    // Verificar stock disponible
-    const stockDisponible = product.stock - product.stockReservado
-    if (stockDisponible < createOrderDto.cantidad) {
-      throw new BadRequestException("Stock insuficiente para crear el encargo")
+    if (createOrderDto.talle) {
+      const size = product.talles?.find((t) => t.talle === createOrderDto.talle)
+      if (!size) {
+        throw new BadRequestException(`El talle ${createOrderDto.talle} no existe para este producto`)
+      }
+      const sizeStockDisponible = size.stock - size.stockReservado
+      if (sizeStockDisponible < createOrderDto.cantidad) {
+        throw new BadRequestException(`Stock insuficiente para talle ${createOrderDto.talle}`)
+      }
+      await this.productsService.reserveSizeStock(createOrderDto.productoId, createOrderDto.talle, createOrderDto.cantidad)
+    } else {
+      const stockDisponible = product.stock - product.stockReservado
+      if (stockDisponible < createOrderDto.cantidad) {
+        throw new BadRequestException("Stock insuficiente para crear el encargo")
+      }
+      await this.productsService.reserveStock(createOrderDto.productoId, createOrderDto.cantidad)
     }
 
-    // Reservar stock
-    await this.productsService.reserveStock(createOrderDto.productoId, createOrderDto.cantidad)
-
-    // Crear encargo con fecha de expiración de 7 días
     const fechaExpiracion = new Date()
     fechaExpiracion.setDate(fechaExpiracion.getDate() + 7)
 
@@ -88,9 +94,14 @@ export class OrdersService {
       throw new BadRequestException("Solo se pueden completar encargos activos")
     }
 
-    // Liberar stock reservado y decrementar stock real
-    await this.productsService.releaseStock(order.productoId, order.cantidad)
-    await this.productsService.decreaseStock(order.productoId, order.cantidad)
+    if (order.talle) {
+      await this.productsService.releaseSizeStock(order.productoId, order.talle, order.cantidad)
+      await this.productsService.decreaseSizeStock(order.productoId, order.talle, order.cantidad)
+      await this.productsService.decreaseStock(order.productoId, order.cantidad)
+    } else {
+      await this.productsService.releaseStock(order.productoId, order.cantidad)
+      await this.productsService.decreaseStock(order.productoId, order.cantidad)
+    }
 
     order.status = OrderStatus.COMPLETADO
     return this.ordersRepository.save(order)
@@ -103,14 +114,16 @@ export class OrdersService {
       throw new BadRequestException("Solo se pueden cancelar encargos activos")
     }
 
-    // Liberar stock reservado
-    await this.productsService.releaseStock(order.productoId, order.cantidad)
+    if (order.talle) {
+      await this.productsService.releaseSizeStock(order.productoId, order.talle, order.cantidad)
+    } else {
+      await this.productsService.releaseStock(order.productoId, order.cantidad)
+    }
 
     order.status = OrderStatus.CANCELADO
     return this.ordersRepository.save(order)
   }
 
-  // Cron job que se ejecuta cada hora para expirar encargos vencidos
   async expireOrders() {
     const now = new Date()
     const expiredOrders = await this.ordersRepository.find({
@@ -122,8 +135,11 @@ export class OrdersService {
     })
 
     for (const order of expiredOrders) {
-      // Liberar stock reservado
-      await this.productsService.releaseStock(order.productoId, order.cantidad)
+      if (order.talle) {
+        await this.productsService.releaseSizeStock(order.productoId, order.talle, order.cantidad)
+      } else {
+        await this.productsService.releaseStock(order.productoId, order.cantidad)
+      }
 
       order.status = OrderStatus.EXPIRADO
       await this.ordersRepository.save(order)

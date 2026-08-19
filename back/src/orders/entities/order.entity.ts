@@ -24,13 +24,16 @@ export class Order {
 
   @ManyToOne(
     () => Product,
-    (product) => product.isActive,
+    (product) => product.encargos,
   )
   @JoinColumn({ name: "productoId" })
   producto: Product
-º
+
   @Column()
   productoId: string
+
+  @Column({ nullable: true })
+  talle?: string
 
   @Column("int")
   cantidad: number

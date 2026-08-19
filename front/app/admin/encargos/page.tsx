@@ -66,7 +66,9 @@ export default function EncargosPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <CardTitle className="text-foreground">{order.producto.nombre}</CardTitle>
-                  <p className="text-sm text-muted-foreground">Cantidad: {order.cantidad}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Cantidad: {order.cantidad} {order.talle ? `| Talle: ${order.talle}` : ""}
+                  </p>
                   <p className="text-sm text-muted-foreground">Vendedor: {order.vendedor.nombre}</p>
                 </div>
                 <Badge

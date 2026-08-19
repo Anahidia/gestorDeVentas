@@ -9,12 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Plus, Pencil, Trash2, X, Loader2, Sparkles, CheckCircle2, Calendar, Clock } from "lucide-react"
+import { Plus, Pencil, Trash2, X, Loader2, Sparkles, CheckCircle2, Calendar, Package } from "lucide-react"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dropzone } from "@/components/ui/dropzone"
 
-export default function ProductosPage() {
+export default function VendedorProductosPage() {
   const toast = useToast()
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -68,7 +68,6 @@ export default function ProductosPage() {
       const normalizedTalle = newTalle.talle.trim().toUpperCase()
       const newStock = Math.max(0, Number(newTalle.stock) || 0)
 
-      // Upsert: si ya existe el talle, se reemplaza su stock
       const existingIndex = talles.findIndex(
         (t) => t.talle.trim().toUpperCase() === normalizedTalle
       )
@@ -85,7 +84,6 @@ export default function ProductosPage() {
 
       setTalles(updatedTalles)
 
-      // Sincronizar automáticamente el Stock General
       const totalStock = updatedTalles.reduce((sum, t) => sum + t.stock, 0)
       setFormData((prev) => ({ ...prev, stock: String(totalStock) }))
 
@@ -192,9 +190,9 @@ export default function ProductosPage() {
 
   if (loading) {
     return (
-      <div className="flex h-96 items-center justify-center text-violet-300">
+      <div className="flex h-96 items-center justify-center text-blue-300">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
           <p className="text-sm font-medium">Cargando catálogo de productos...</p>
         </div>
       </div>
@@ -205,10 +203,10 @@ export default function ProductosPage() {
     <div className="flex flex-col gap-6 font-sans text-slate-100 pb-12">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-violet-200 to-blue-400 bg-clip-text text-transparent">
-            Gestión de Productos
+          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-blue-200 to-cyan-400 bg-clip-text text-transparent">
+            Cargar & Gestionar Productos
           </h1>
-          <p className="text-xs text-violet-300/70">Crea, edita y administra tu catálogo de inventario</p>
+          <p className="text-xs text-blue-300/70">Añade mercadería al inventario del negocio</p>
         </div>
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -221,49 +219,49 @@ export default function ProductosPage() {
                 setImageFile(null)
                 setImagePreview("")
               }}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 font-semibold text-white shadow-lg shadow-violet-600/30 hover:brightness-110 rounded-xl"
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 font-semibold text-white shadow-lg shadow-blue-600/30 hover:brightness-110 rounded-xl"
             >
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Producto
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="border-violet-500/20 bg-[#0d071b] text-slate-100 max-w-lg backdrop-blur-2xl max-h-[85vh] overflow-y-auto pr-3">
+          <DialogContent className="border-blue-500/20 bg-[#0d071b] text-slate-100 max-w-lg backdrop-blur-2xl max-h-[85vh] overflow-y-auto pr-3">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold bg-gradient-to-r from-white via-violet-200 to-blue-400 bg-clip-text text-transparent">
+              <DialogTitle className="text-xl font-bold bg-gradient-to-r from-white via-blue-200 to-cyan-400 bg-clip-text text-transparent">
                 {editingProduct ? "Editar Producto" : "Nuevo Producto"}
               </DialogTitle>
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-violet-200">Nombre del Producto *</Label>
+                <Label className="text-xs text-blue-200">Nombre del Producto *</Label>
                 <Input
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   required
                   placeholder="Ej. Remera Estampada"
-                  className="border-violet-500/20 bg-violet-950/40 text-xs text-white"
+                  className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-violet-200">Descripción</Label>
+                <Label className="text-xs text-blue-200">Descripción</Label>
                 <Input
                   value={formData.descripcion}
                   onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                   placeholder="Detalles del producto..."
-                  className="border-violet-500/20 bg-violet-950/40 text-xs text-white"
+                  className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-violet-200">Categoría</Label>
+                <Label className="text-xs text-blue-200">Categoría</Label>
                 <Select
                   value={formData.categoryId}
                   onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
                 >
-                  <SelectTrigger className="border-violet-500/20 bg-violet-950/40 text-xs text-white">
+                  <SelectTrigger className="border-blue-500/20 bg-violet-950/40 text-xs text-white">
                     <SelectValue placeholder="Seleccionar categoría" />
                   </SelectTrigger>
                   <SelectContent className="bg-violet-950 border-violet-800 text-white">
@@ -279,19 +277,19 @@ export default function ProductosPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs text-violet-200">Precio *</Label>
+                  <Label className="text-xs text-blue-200">Precio *</Label>
                   <Input
                     type="number"
                     step="0.01"
                     value={formData.precio}
                     onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
                     required
-                    className="border-violet-500/20 bg-violet-950/40 text-xs text-white"
+                    className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <Label className="text-xs text-violet-200 flex items-center justify-between">
+                  <Label className="text-xs text-blue-200 flex items-center justify-between">
                     <span>Stock General *</span>
                     {talles.length > 0 && (
                       <span className="text-[10px] text-cyan-300 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-700/40">
@@ -306,7 +304,7 @@ export default function ProductosPage() {
                     required
                     disabled={talles.length > 0}
                     readOnly={talles.length > 0}
-                    className={`border-violet-500/20 text-xs text-white ${
+                    className={`border-blue-500/20 text-xs text-white ${
                       talles.length > 0
                         ? "bg-cyan-950/20 border-cyan-500/30 text-cyan-200 font-bold"
                         : "bg-violet-950/40"
@@ -316,9 +314,9 @@ export default function ProductosPage() {
               </div>
 
               {/* Talles Section */}
-              <div className="flex flex-col gap-2 rounded-xl border border-violet-500/20 bg-violet-900/10 p-3">
+              <div className="flex flex-col gap-2 rounded-xl border border-blue-500/20 bg-violet-900/10 p-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-violet-200 font-semibold">Talles y Cantidades</Label>
+                  <Label className="text-xs text-blue-200 font-semibold">Talles y Cantidades</Label>
                   {talles.length > 0 && (
                     <span className="text-[11px] text-cyan-300 font-semibold">
                       Total por talles: {talles.reduce((sum, t) => sum + t.stock, 0)} u.
@@ -331,7 +329,7 @@ export default function ProductosPage() {
                     placeholder="Ej: 4, S, M, L"
                     value={newTalle.talle}
                     onChange={(e) => setNewTalle({ ...newTalle, talle: e.target.value })}
-                    className="border-violet-500/20 bg-violet-950/40 text-xs text-white"
+                    className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
                   />
                   <Input
                     type="number"
@@ -339,13 +337,13 @@ export default function ProductosPage() {
                     placeholder="Cantidad"
                     value={newTalle.stock}
                     onChange={(e) => setNewTalle({ ...newTalle, stock: e.target.value })}
-                    className="w-24 border-violet-500/20 bg-violet-950/40 text-xs text-white"
+                    className="w-24 border-blue-500/20 bg-violet-950/40 text-xs text-white"
                   />
                   <Button
                     type="button"
                     onClick={handleAddTalle}
                     size="sm"
-                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 font-semibold text-xs"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:brightness-110 font-semibold text-xs"
                   >
                     <Plus className="h-4 w-4 mr-1" /> Cargar
                   </Button>
@@ -375,7 +373,7 @@ export default function ProductosPage() {
 
               {/* Cloudinary Dropzone Component */}
               <div className="flex flex-col gap-1.5">
-                <Label className="text-xs text-violet-200 font-semibold">Imagen del Producto (Cloudinary)</Label>
+                <Label className="text-xs text-blue-200 font-semibold">Imagen del Producto (Cloudinary)</Label>
                 <Dropzone
                   onFileSelect={(file) => {
                     setImageFile(file)
@@ -393,7 +391,7 @@ export default function ProductosPage() {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="mt-2 bg-gradient-to-r from-violet-600 to-indigo-600 font-semibold text-white rounded-xl"
+                className="mt-2 bg-gradient-to-r from-blue-600 to-cyan-600 font-semibold text-white rounded-xl"
               >
                 {submitting ? (
                   <>
@@ -414,36 +412,36 @@ export default function ProductosPage() {
         {products.map((product) => (
           <div
             key={product.id}
-            className="rounded-2xl border border-violet-500/20 bg-violet-950/30 p-5 shadow-xl backdrop-blur-xl transition-all hover:border-violet-500/40 flex flex-col justify-between"
+            className="rounded-2xl border border-blue-500/20 bg-violet-950/30 p-5 shadow-xl backdrop-blur-xl transition-all hover:border-blue-500/40 flex flex-col justify-between"
           >
             <div>
               {product.imagenUrl && (
-                <div className="relative h-44 w-full mb-4 rounded-xl overflow-hidden border border-violet-500/20">
+                <div className="relative h-44 w-full mb-4 rounded-xl overflow-hidden border border-blue-500/20">
                   <Image src={product.imagenUrl} alt={product.nombre} fill className="object-cover" unoptimized />
                 </div>
               )}
 
               <h3 className="text-base font-extrabold text-white">{product.nombre}</h3>
-              {product.descripcion && <p className="text-xs text-violet-300/70 mt-1 line-clamp-2">{product.descripcion}</p>}
+              {product.descripcion && <p className="text-xs text-blue-300/70 mt-1 line-clamp-2">{product.descripcion}</p>}
               {product.category && (
                 <span className="inline-block text-[11px] font-semibold text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded-lg border border-cyan-800/30 mt-2">
                   {product.category.nombre}
                 </span>
               )}
 
-              <div className="flex items-center justify-between mt-4 border-t border-violet-500/10 pt-3">
+              <div className="flex items-center justify-between mt-4 border-t border-blue-500/10 pt-3">
                 <span className="text-xl font-black text-white">${Number(product.precio).toFixed(2)}</span>
-                <span className="text-xs text-violet-300/80 font-medium">
+                <span className="text-xs text-blue-300/80 font-medium">
                   Stock Total: <strong className="text-white">{product.stock}</strong>
                 </span>
               </div>
 
               {product.talles && product.talles.length > 0 && (
                 <div className="mt-3 text-xs">
-                  <span className="text-violet-300/60 font-semibold">Talles:</span>
+                  <span className="text-blue-300/60 font-semibold">Talles:</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {product.talles.map((t: any) => (
-                      <span key={t.id} className="bg-violet-900/30 text-violet-200 border border-violet-800/30 px-2 py-0.5 rounded-lg text-[11px]">
+                      <span key={t.id} className="bg-violet-900/30 text-blue-200 border border-blue-800/30 px-2 py-0.5 rounded-lg text-[11px]">
                         {t.talle}: {t.stock}
                       </span>
                     ))}
@@ -452,7 +450,7 @@ export default function ProductosPage() {
               )}
 
               {/* Product Creation Date & Time */}
-              <div className="mt-3 pt-2 border-t border-violet-500/10 flex items-center justify-between text-[11px] text-violet-300/60 font-medium">
+              <div className="mt-3 pt-2 border-t border-blue-500/10 flex items-center justify-between text-[11px] text-blue-300/60 font-medium">
                 <span className="flex items-center gap-1.5 font-mono">
                   <Calendar className="h-3.5 w-3.5 text-cyan-400" />
                   Cargado: {product.createdAt ? format(new Date(product.createdAt), "dd/MM/yyyy 'a las' HH:mm 'hs'", { locale: es }) : "Fecha no disp."}
@@ -460,12 +458,12 @@ export default function ProductosPage() {
               </div>
             </div>
 
-            <div className="flex gap-2 mt-5 pt-3 border-t border-violet-500/10">
+            <div className="flex gap-2 mt-5 pt-3 border-t border-blue-500/10">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => handleEdit(product)}
-                className="flex-1 text-xs text-violet-200 bg-violet-900/20 hover:bg-violet-900/40 rounded-xl border border-violet-700/30"
+                className="flex-1 text-xs text-blue-200 bg-blue-900/20 hover:bg-blue-900/40 rounded-xl border border-blue-700/30"
               >
                 <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
               </Button>

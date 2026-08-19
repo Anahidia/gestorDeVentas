@@ -119,10 +119,29 @@ export class ApiClient {
     direccionNegocio?: string
     telefonoNegocio?: string
     logoUrl?: string
+    logoFile?: File | null
   }) {
+    let bodyData: any
+
+    if (adminData.logoFile) {
+      const formData = new FormData()
+      formData.append("email", adminData.email)
+      formData.append("password", adminData.password)
+      formData.append("nombre", adminData.nombre)
+      if (adminData.telefono) formData.append("telefono", adminData.telefono)
+      formData.append("nombreNegocio", adminData.nombreNegocio)
+      if (adminData.direccionNegocio) formData.append("direccionNegocio", adminData.direccionNegocio)
+      if (adminData.telefonoNegocio) formData.append("telefonoNegocio", adminData.telefonoNegocio)
+      formData.append("logo", adminData.logoFile)
+      bodyData = formData
+    } else {
+      const { logoFile, ...jsonPayload } = adminData
+      bodyData = JSON.stringify(jsonPayload)
+    }
+
     const data = await this.request("/auth/register-admin", {
       method: "POST",
-      body: JSON.stringify(adminData),
+      body: bodyData,
     })
     if (data?.access_token) {
       this.setToken(data.access_token)

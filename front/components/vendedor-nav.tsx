@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, ClipboardList, LogOut, Store, Clock, Loader2, LogIn, LogOut as ShiftOut } from "lucide-react"
+import { ShoppingCart, ClipboardList, LogOut, Store, Clock, Loader2, LogIn, LogOut as ShiftOut, Package } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function VendedorNav() {
@@ -43,6 +43,7 @@ export function VendedorNav() {
 
   const navItems = [
     { href: "/vendedor", label: "Nueva Venta", icon: ShoppingCart },
+    { href: "/vendedor/products", label: "Cargar Productos", icon: Package },
     { href: "/vendedor/encargos", label: "Mis Encargos", icon: ClipboardList },
   ]
 

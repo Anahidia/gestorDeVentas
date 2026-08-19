@@ -38,13 +38,15 @@ export default function RegisterPage() {
     password: "",
   })
 
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
 
     try {
-      await registerAdmin(adminForm)
+      await registerAdmin({ ...adminForm, logoFile })
       router.push("/admin")
     } catch (err: any) {
       setError(err.message || "Error al registrar el negocio")
@@ -178,6 +180,7 @@ export default function RegisterPage() {
                 <Label className="text-xs text-violet-200 font-semibold">Logo del Comercio (Opcional)</Label>
                 <Dropzone
                   onFileSelect={(file) => {
+                    setLogoFile(file)
                     if (file) {
                       setAdminForm({ ...adminForm, logoUrl: URL.createObjectURL(file) })
                     } else {

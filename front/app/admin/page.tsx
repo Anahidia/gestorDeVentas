@@ -7,6 +7,9 @@ import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import Image from "next/image"
 import {
   BarChart3,
   Users,
@@ -22,15 +25,19 @@ import {
   AlertTriangle,
   UserCheck,
   Loader2,
+  Calendar,
+  User,
+  Boxes,
 } from "lucide-react"
 
 export default function AdminDashboard() {
   const toast = useToast()
   const { business } = useAuth()
-  const [activeTab, setActiveTab] = useState<"overview" | "employees" | "sales">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "employees" | "sales" | "inventory">("overview")
   const [stats, setStats] = useState<any>(null)
   const [employees, setEmployees] = useState<any[]>([])
   const [sales, setSales] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [copiedCode, setCopiedCode] = useState(false)
   const [editingCodeUser, setEditingCodeUser] = useState<string | null>(null)
@@ -63,6 +70,7 @@ export default function AdminDashboard() {
 
       setEmployees(empData)
       setSales(salesList)
+      setProducts(productsData)
     } catch (error: any) {
       console.error("Error loading admin data:", error)
     } finally {
@@ -257,10 +265,10 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content Tabs Navigation */}
-      <div className="flex border-b border-violet-500/20 gap-2">
+      <div className="flex flex-wrap border-b border-violet-500/20 gap-2">
         <button
           onClick={() => setActiveTab("overview")}
-          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-all border-b-2 ${
             activeTab === "overview"
               ? "border-violet-400 text-violet-200 bg-violet-900/20 rounded-t-xl"
               : "border-transparent text-violet-300/60 hover:text-white"
@@ -270,23 +278,35 @@ export default function AdminDashboard() {
         </button>
         <button
           onClick={() => setActiveTab("employees")}
-          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-all border-b-2 ${
             activeTab === "employees"
               ? "border-blue-400 text-blue-200 bg-blue-900/20 rounded-t-xl"
               : "border-transparent text-violet-300/60 hover:text-white"
           }`}
         >
-          <Users className="h-4 w-4" /> Gestión de Empleados & Turnos ({employees.length})
+          <Users className="h-4 w-4" /> Fichaje & Empleados ({employees.length})
         </button>
         <button
           onClick={() => setActiveTab("sales")}
-          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold transition-all border-b-2 ${
+          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-all border-b-2 ${
             activeTab === "sales"
               ? "border-emerald-400 text-emerald-200 bg-emerald-900/20 rounded-t-xl"
               : "border-transparent text-violet-300/60 hover:text-white"
           }`}
         >
-          <ShoppingCart className="h-4 w-4" /> Registro de Ventas & Devoluciones
+          <ShoppingCart className="h-4 w-4" /> Ventas & Devoluciones
+        </button>
+
+        {/* TAB 4: CONTROL DE INVENTARIO */}
+        <button
+          onClick={() => setActiveTab("inventory")}
+          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-all border-b-2 ${
+            activeTab === "inventory"
+              ? "border-cyan-400 text-cyan-200 bg-cyan-950/30 rounded-t-xl"
+              : "border-transparent text-violet-300/60 hover:text-white"
+          }`}
+        >
+          <Boxes className="h-4 w-4 text-cyan-400" /> Manejo / Control de Inventario ({products.length})
         </button>
       </div>
 
@@ -557,6 +577,106 @@ export default function AdminDashboard() {
                       )}
                     </Button>
                   )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: MANEJO / CONTROL DE INVENTARIO */}
+      {activeTab === "inventory" && (
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-cyan-500/20 bg-cyan-950/20 p-5 backdrop-blur-xl">
+            <div>
+              <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                <Boxes className="h-5 w-5 text-cyan-400" /> Manejo & Control de Inventario
+              </h2>
+              <p className="text-xs text-cyan-200/70">
+                Auditoría completa de productos: foto, stock, fecha/hora de carga y usuario que lo registró
+              </p>
+            </div>
+            <span className="text-xs font-mono bg-cyan-950/60 text-cyan-300 px-3 py-1.5 rounded-xl border border-cyan-800/30">
+              Total: {products.length} productos registrados
+            </span>
+          </div>
+
+          {/* Detailed Inventory Table / Cards */}
+          <div className="flex flex-col gap-3">
+            {products.length === 0 ? (
+              <p className="text-xs text-violet-300/60">No hay productos registrados en inventario.</p>
+            ) : (
+              products.map((product) => (
+                <div
+                  key={product.id}
+                  className="rounded-2xl border border-violet-500/20 bg-violet-950/30 p-4 shadow-xl backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all hover:border-cyan-500/30"
+                >
+                  {/* Left: Thumbnail & Name & Category */}
+                  <div className="flex items-center gap-4">
+                    {product.imagenUrl ? (
+                      <div className="relative h-14 w-14 shrink-0 rounded-xl overflow-hidden border border-cyan-500/30 bg-black">
+                        <Image src={product.imagenUrl} alt={product.nombre} fill className="object-cover" unoptimized />
+                      </div>
+                    ) : (
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-violet-900/30 text-violet-400 border border-violet-700/30">
+                        <Package className="h-6 w-6" />
+                      </div>
+                    )}
+
+                    <div className="flex flex-col gap-0.5">
+                      <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
+                        {product.nombre}
+                        {product.category && (
+                          <span className="text-[10px] font-semibold text-cyan-300 bg-cyan-950/50 px-2 py-0.5 rounded-md border border-cyan-800/30">
+                            {product.category.nombre}
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-xs text-violet-300/70 font-semibold">${Number(product.precio).toFixed(2)}</p>
+                      
+                      {/* Breakdown by sizes */}
+                      {product.talles && product.talles.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {product.talles.map((t: any) => (
+                            <span key={t.id} className="text-[10px] bg-violet-900/40 text-violet-200 px-1.5 py-0.5 rounded border border-violet-700/30">
+                              {t.talle}: {t.stock} u.
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Quantity, Date/Time & Who loaded it */}
+                  <div className="flex flex-wrap items-center gap-4 sm:gap-6 border-t sm:border-t-0 border-violet-500/10 pt-3 sm:pt-0 w-full sm:w-auto justify-between sm:justify-end">
+                    {/* Stock Total */}
+                    <div className="flex flex-col items-start sm:items-end">
+                      <span className="text-[10px] uppercase font-bold text-violet-300/60">Stock Total</span>
+                      <span className={`text-base font-black ${product.stock < 10 ? "text-rose-400" : "text-emerald-400"}`}>
+                        {product.stock} unidades
+                      </span>
+                    </div>
+
+                    {/* Date & Time Loaded */}
+                    <div className="flex flex-col items-start sm:items-end">
+                      <span className="text-[10px] uppercase font-bold text-violet-300/60 flex items-center gap-1">
+                        <Calendar className="h-3 w-3 text-cyan-400" /> Día y Hora de Carga
+                      </span>
+                      <span className="text-xs font-mono font-medium text-white">
+                        {product.createdAt ? format(new Date(product.createdAt), "dd/MM/yyyy 'a las' HH:mm 'hs'", { locale: es }) : "N/A"}
+                      </span>
+                    </div>
+
+                    {/* Who Loaded It */}
+                    <div className="flex flex-col items-start sm:items-end">
+                      <span className="text-[10px] uppercase font-bold text-violet-300/60 flex items-center gap-1">
+                        <User className="h-3 w-3 text-violet-400" /> Cargado Por
+                      </span>
+                      <span className="text-xs font-semibold text-cyan-300 bg-cyan-950/40 px-2.5 py-1 rounded-xl border border-cyan-800/30">
+                        {product.creadoPor?.nombre || user?.nombre || "Usuario del Sistema"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               ))
             )}

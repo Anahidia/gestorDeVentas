@@ -1,13 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common"
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from "@nestjs/common"
 import { InjectRepository } from "@nestjs/typeorm"
 import { Repository } from "typeorm"
 import { Product } from "./entities/product.entity"
 import { ProductSize } from "./entities/product-size.entity"
+import { User, UserRole } from "../users/entities/user.entity"
 import { CreateProductDto } from "./dto/create-product.dto"
 import { UpdateProductDto } from "./dto/update-product.dto"
 
 @Injectable()
-export class ProductsService {
+export class ProductsService implements OnModuleInit {
   constructor(
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
@@ -15,6 +16,24 @@ export class ProductsService {
     @InjectRepository(ProductSize)
     private readonly productSizesRepository: Repository<ProductSize>,
   ) {}
+
+  async onModuleInit() {
+    try {
+      const admin = await this.productsRepository.manager.findOne(User, {
+        where: { role: UserRole.ADMIN },
+      })
+      if (admin) {
+        await this.productsRepository
+          .createQueryBuilder()
+          .update(Product)
+          .set({ creadoPorId: admin.id })
+          .where("creadoPorId IS NULL")
+          .execute()
+      }
+    } catch (e) {
+      console.warn("Could not backfill creadoPorId:", e)
+    }
+  }
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     console.log("[v0] Creating product:", createProductDto)
@@ -39,6 +58,7 @@ export class ProductsService {
       .createQueryBuilder("product")
       .leftJoinAndSelect("product.category", "category")
       .leftJoinAndSelect("product.talles", "talles")
+      .leftJoinAndSelect("product.creadoPor", "creadoPor")
 
     if (!includeInactive) {
       query.where("product.isActive = :isActive", { isActive: true })

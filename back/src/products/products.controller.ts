@@ -10,19 +10,19 @@ import {
   Body,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
+  Request,
 } from "@nestjs/common"
 import { FileInterceptor } from "@nestjs/platform-express"
-import { diskStorage } from "multer"
-import { extname } from "path"
-import  { ProductsService } from "./products.service"
-import  { CreateProductDto } from "./dto/create-product.dto"
+import { memoryStorage } from "multer"
+import { ProductsService } from "./products.service"
+import { CreateProductDto } from "./dto/create-product.dto"
 import { UpdateProductDto } from "./dto/update-product.dto"
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard"
 import { RolesGuard } from "../auth/guards/roles.guard"
 import { Roles } from "../auth/decorators/roles.decorator"
 import { UserRole } from "../users/entities/user.entity"
-import  { Express } from "express"
-
+import { Express } from "express"
 import { CloudinaryService } from "../config/cloudinary.service"
 
 @Controller("products")
@@ -35,30 +35,30 @@ export class ProductsController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.VENDEDOR)
   @UseInterceptors(
     FileInterceptor("image", {
-      storage: diskStorage({
-        destination: "./uploads",
-        filename: (req, file, cb) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join("")
-          cb(null, `${randomName}${extname(file.originalname)}`)
-        },
-      }),
+      storage: memoryStorage(),
     }),
   )
-  async create(@Body() dto: any, @UploadedFile() file?: Express.Multer.File) {
+  async create(
+    @Body() dto: any,
+    @Request() req: any,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (req?.user?.id) {
+      dto.creadoPorId = req.user.id
+    }
+
     if (file) {
       try {
         const result = await this.cloudinaryService.uploadImage(file)
         dto.imagenUrl = result.secure_url
-      } catch (err) {
-        console.warn("Cloudinary upload failed, falling back to local storage:", err)
-        const port = process.env.PORT || 3001
-        dto.imagenUrl = `http://localhost:${port}/uploads/${file.filename}`
+      } catch (err: any) {
+        console.warn("Cloudinary error (403/credentials), falling back to base64 data URL:", err.message || err)
+        const mime = file.mimetype || "image/jpeg"
+        const base64 = file.buffer.toString("base64")
+        dto.imagenUrl = `data:${mime};base64,${base64}`
       }
     }
 
@@ -89,19 +89,10 @@ export class ProductsController {
 
   @Patch(":id")
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.VENDEDOR)
   @UseInterceptors(
     FileInterceptor("image", {
-      storage: diskStorage({
-        destination: "./uploads",
-        filename: (req, file, cb) => {
-          const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join("")
-          cb(null, `${randomName}${extname(file.originalname)}`)
-        },
-      }),
+      storage: memoryStorage(),
     }),
   )
   async update(
@@ -113,10 +104,11 @@ export class ProductsController {
       try {
         const result = await this.cloudinaryService.uploadImage(file)
         updateProductDto.imagenUrl = result.secure_url
-      } catch (err) {
-        console.warn("Cloudinary upload failed, falling back to local storage:", err)
-        const port = process.env.PORT || 3001
-        updateProductDto.imagenUrl = `http://localhost:${port}/uploads/${file.filename}`
+      } catch (err: any) {
+        console.warn("Cloudinary error (403/credentials), falling back to base64 data URL:", err.message || err)
+        const mime = file.mimetype || "image/jpeg"
+        const base64 = file.buffer.toString("base64")
+        updateProductDto.imagenUrl = `data:${mime};base64,${base64}`
       }
     }
 

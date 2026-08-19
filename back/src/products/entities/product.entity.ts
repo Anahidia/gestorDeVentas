@@ -12,6 +12,7 @@ import { SaleItem } from "../../sales/entities/sale-item.entity"
 import { Order } from "../../orders/entities/order.entity"
 import { Category } from "../../categories/entities/category.entity"
 import { ProductSize } from "./product-size.entity"
+import { User } from "../../users/entities/user.entity"
 
 @Entity("products")
 export class Product {
@@ -48,6 +49,13 @@ export class Product {
   )
   @JoinColumn({ name: "categoryId" })
   category: Category
+
+  @Column({ nullable: true })
+  creadoPorId: string
+
+  @ManyToOne(() => User, { nullable: true, eager: true })
+  @JoinColumn({ name: "creadoPorId" })
+  creadoPor: User
 
   @OneToMany(
     () => ProductSize,

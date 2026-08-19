@@ -44,7 +44,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-foreground">Página de Administración</h1>
         <p className="text-muted-foreground">Resumen general del sistema</p>
       </div>
 

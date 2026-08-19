@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Store, User, Mail, Lock, Phone, MapPin, KeyRound, Sparkles, Building2, UserCheck, ArrowRight, Image as ImageIcon } from "lucide-react"
+import { Dropzone } from "@/components/ui/dropzone"
 
 export default function RegisterPage() {
   const [tab, setTab] = useState<"admin" | "employee">("admin")
@@ -174,17 +175,18 @@ export default function RegisterPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="logoUrl" className="text-xs text-violet-200">URL del Logo (Opcional)</Label>
-                <div className="relative">
-                  <ImageIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-violet-400" />
-                  <Input
-                    id="logoUrl"
-                    placeholder="https://..."
-                    value={adminForm.logoUrl}
-                    onChange={(e) => setAdminForm({ ...adminForm, logoUrl: e.target.value })}
-                    className="h-10 border-violet-500/20 bg-violet-950/40 pl-9 text-xs text-white placeholder:text-violet-400/40"
-                  />
-                </div>
+                <Label className="text-xs text-violet-200 font-semibold">Logo del Comercio (Opcional)</Label>
+                <Dropzone
+                  onFileSelect={(file) => {
+                    if (file) {
+                      setAdminForm({ ...adminForm, logoUrl: URL.createObjectURL(file) })
+                    } else {
+                      setAdminForm({ ...adminForm, logoUrl: "" })
+                    }
+                  }}
+                  currentImage={adminForm.logoUrl}
+                  label={adminForm.nombreNegocio || "Logo del Comercio"}
+                />
               </div>
             </div>
 

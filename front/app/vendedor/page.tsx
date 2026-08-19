@@ -3,6 +3,7 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function VendedorPage() {
   const toast = useToast()
+  const { user, refreshProfile } = useAuth()
+  const [loadingShift, setLoadingShift] = useState(false)
   const [products, setProducts] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [cart, setCart] = useState<any[]>([])
@@ -141,6 +144,20 @@ export default function VendedorPage() {
     }
   }
 
+  const handleClockIn = async () => {
+    if (!user?.id) return
+    setLoadingShift(true)
+    try {
+      await api.toggleUserShift(user.id)
+      await refreshProfile()
+      toast.success("¡Entrada laboral (fichaje) registrada correctamente!", "Fichaje Registrado")
+    } catch (err: any) {
+      toast.error(err.message || "Error al fichar entrada", "Error")
+    } finally {
+      setLoadingShift(false)
+    }
+  }
+
   const total = cart.reduce((sum, item) => sum + item.producto.precio * item.cantidad, 0)
 
   return (
@@ -151,6 +168,33 @@ export default function VendedorPage() {
         </h1>
         <p className="text-xs text-blue-300/70">Selecciona productos, gestiona el carrito o crea encargos de clientes</p>
       </div>
+
+      {/* Fichaje Laboral Top Banner */}
+      {!user?.inShift && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 px-5 backdrop-blur-xl shadow-xl animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <Clock className="h-5 w-5 animate-pulse" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white">
+                👋 ¡Hola {user?.nombre}! Tienes pendiente marcar tu Fichaje Laboral
+              </h4>
+              <p className="text-xs text-emerald-200/70">
+                Registra tu horario de entrada de hoy para notificar a administración
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={handleClockIn}
+            disabled={loadingShift}
+            className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/30 hover:brightness-110"
+          >
+            {loadingShift ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Clock className="h-4 w-4 mr-2" />}
+            Fichar Entrada Ahora
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column: Products Grid & Search */}

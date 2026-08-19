@@ -23,7 +23,10 @@ export class ProductsService {
     const product = this.productsRepository.create(productData)
 
     if (talles && talles.length > 0) {
-      product.talles = talles.map((t) => this.productSizesRepository.create(t))
+      product.talles = talles.map((t: any) =>
+        this.productSizesRepository.create({ talle: String(t.talle), stock: Number(t.stock || 0) })
+      )
+      product.stock = talles.reduce((sum, t) => sum + Number(t.stock || 0), 0)
     }
 
     const saved = await this.productsRepository.save(product)
@@ -74,11 +77,14 @@ export class ProductsService {
     const { talles, ...productData } = updateProductDto as any
     Object.assign(product, productData)
 
-    if (talles) {
+    if (talles && Array.isArray(talles)) {
       // Eliminar talles existentes
       await this.productSizesRepository.delete({ productoId: id })
       // Crear nuevos talles
-      product.talles = talles.map((t: any) => this.productSizesRepository.create(t))
+      product.talles = talles.map((t: any) =>
+        this.productSizesRepository.create({ talle: String(t.talle), stock: Number(t.stock || 0) })
+      )
+      product.stock = talles.reduce((sum, t) => sum + Number(t.stock || 0), 0)
     }
 
     return this.productsRepository.save(product)

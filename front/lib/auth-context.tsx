@@ -20,6 +20,11 @@ interface User {
   nombre: string
   telefono?: string
   role: string
+  departamento?: string
+  inShift?: boolean
+  lastCheckIn?: string
+  codigoEmpleado?: string
+  business?: Business
 }
 
 interface AuthContextType {
@@ -29,6 +34,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   registerAdmin: (data: any) => Promise<void>
   registerEmployee: (data: any) => Promise<void>
+  refreshProfile: () => Promise<void>
   logout: () => void
   isAdmin: boolean
 }
@@ -40,17 +46,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [business, setBusiness] = useState<Business | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const refreshProfile = async () => {
+    try {
+      const token = api.getToken()
+      if (token) {
+        const profile = await api.getProfile()
+        setUser(profile)
+        if (profile.business) {
+          setBusiness(profile.business)
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing profile:", error)
+    }
+  }
+
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const token = api.getToken()
-        if (token) {
-          const profile = await api.getProfile()
-          setUser(profile)
-          if (profile.business) {
-            setBusiness(profile.business)
-          }
-        }
+        await refreshProfile()
       } catch (error) {
         api.clearToken()
         localStorage.removeItem("business")
@@ -102,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, business, loading, login, registerAdmin, registerEmployee, logout, isAdmin }}
+      value={{ user, business, loading, login, registerAdmin, registerEmployee, refreshProfile, logout, isAdmin }}
     >
       {children}
     </AuthContext.Provider>

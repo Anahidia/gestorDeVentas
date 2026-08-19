@@ -47,4 +47,11 @@ export class SalesController {
   cancel(@Param("id") id: string) {
     return this.salesService.cancel(id)
   }
+
+  @Patch(":id/refund")
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  refund(@Param("id") id: string) {
+    return this.salesService.refund(id)
+  }
 }

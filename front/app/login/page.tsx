@@ -23,8 +23,12 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      await login(email, password)
-      router.push("/")
+      const loggedUser = await login(email, password)
+      if (loggedUser?.role?.toLowerCase() === "admin") {
+        router.push("/admin")
+      } else {
+        router.push("/vendedor")
+      }
     } catch (err: any) {
       setError(err.message || "Credenciales inválidas. Por favor verifica tus datos.")
     } finally {

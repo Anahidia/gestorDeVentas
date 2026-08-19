@@ -37,6 +37,18 @@ export class User {
   isActive: boolean
 
   @Column({ nullable: true })
+  departamento: string
+
+  @Column({ default: false })
+  inShift: boolean
+
+  @Column({ type: "timestamp", nullable: true })
+  lastCheckIn: Date
+
+  @Column({ nullable: true })
+  codigoEmpleado: string
+
+  @Column({ nullable: true })
   businessId: string
 
   @ManyToOne(() => Business, (business) => business.usuarios, { onDelete: "SET NULL" })

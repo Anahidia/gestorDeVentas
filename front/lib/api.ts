@@ -12,7 +12,13 @@ export class ApiClient {
 
   getToken() {
     if (!this.token && typeof window !== "undefined") {
-      this.token = localStorage.getItem("token")
+      const stored = localStorage.getItem("token")
+      if (stored && stored !== "undefined" && stored !== "null") {
+        this.token = stored
+      } else {
+        this.token = null
+        localStorage.removeItem("token")
+      }
     }
     return this.token
   }
@@ -21,6 +27,7 @@ export class ApiClient {
     this.token = null
     if (typeof window !== "undefined") {
       localStorage.removeItem("token")
+      localStorage.removeItem("business")
     }
   }
 
@@ -28,7 +35,7 @@ export class ApiClient {
     const token = this.getToken()
 
     const headers: Record<string, string> = {}
-    if (token) {
+    if (token && token !== "undefined" && token !== "null") {
       headers["Authorization"] = `Bearer ${token}`
     }
 
@@ -40,24 +47,41 @@ export class ApiClient {
       Object.assign(headers, options.headers as Record<string, string>)
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-    })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({
-        message: "Error desconocido",
-      }))
-      throw new Error(error.message || "Error en la petición")
+    let response: Response
+    try {
+      response = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers,
+      })
+    } catch (err: any) {
+      throw new Error("No se pudo conectar con el servidor backend (puerto 3001)")
     }
 
-    // Para DELETE o respuestas sin body
     if (response.status === 204) {
       return null
     }
 
-    return response.json()
+    const text = await response.text()
+    let data: any = null
+    if (text) {
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        data = null
+      }
+    }
+
+    if (!response.ok) {
+      const errorMessage =
+        data && typeof data === "object" && data.message
+          ? Array.isArray(data.message)
+            ? data.message.join(", ")
+            : data.message
+          : `Error en la petición (${response.status})`
+      throw new Error(errorMessage)
+    }
+
+    return data
   }
 
   // ================= AUTH =================
@@ -232,6 +256,12 @@ export class ApiClient {
     })
   }
 
+  async refundSale(id: string) {
+    return this.request(`/sales/${id}/refund`, {
+      method: "PATCH",
+    })
+  }
+
   async getSalesStats() {
     return this.request("/sales/stats")
   }
@@ -276,9 +306,33 @@ export class ApiClient {
     return this.request("/orders/stats")
   }
 
-  // ================= USERS =================
+  // ================= USERS & EMPLOYEES =================
   async getUsers() {
     return this.request("/users")
+  }
+
+  async getUsersByBusiness(businessId: string) {
+    return this.request(`/users/business/${businessId}`)
+  }
+
+  async toggleUserShift(userId: string) {
+    return this.request(`/users/${userId}/shift`, {
+      method: "PATCH",
+    })
+  }
+
+  async updateUserDepartment(userId: string, departamento: string) {
+    return this.request(`/users/${userId}/department`, {
+      method: "PATCH",
+      body: JSON.stringify({ departamento }),
+    })
+  }
+
+  async updateEmployeeCode(userId: string, codigoEmpleado: string) {
+    return this.request(`/users/${userId}/code`, {
+      method: "PATCH",
+      body: JSON.stringify({ codigoEmpleado }),
+    })
   }
 }
 

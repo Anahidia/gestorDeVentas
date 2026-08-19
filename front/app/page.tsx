@@ -12,7 +12,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.role === "admin") {
+      if (user.role?.toLowerCase() === "admin") {
         router.push("/admin")
       } else {
         router.push("/vendedor")

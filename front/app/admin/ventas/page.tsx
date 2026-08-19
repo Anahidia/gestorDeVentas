@@ -2,74 +2,130 @@
 
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { ShoppingCart, RotateCcw, ArrowLeft } from "lucide-react"
 
 export default function VentasPage() {
   const [sales, setSales] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const loadSales = async () => {
-      try {
-        const data = await api.getSales()
-        setSales(data)
-      } catch (error) {
-        console.error("Error loading sales:", error)
-      } finally {
-        setLoading(false)
-      }
+  const loadSales = async () => {
+    try {
+      setLoading(true)
+      const data = await api.getSales()
+      setSales(data)
+    } catch (error) {
+      console.error("Error loading sales:", error)
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     loadSales()
   }, [])
 
+  const handleRefund = async (saleId: string) => {
+    if (confirm("¿Estás seguro de registrar la devolución de esta venta? El stock se reingresará automáticamente.")) {
+      try {
+        await api.refundSale(saleId)
+        alert("Devolución procesada exitosamente")
+        loadSales()
+      } catch (error: any) {
+        alert(error.message || "Error al procesar devolución")
+      }
+    }
+  }
+
   if (loading) {
-    return <div className="text-muted-foreground">Cargando ventas...</div>
+    return (
+      <div className="flex h-96 items-center justify-center text-violet-300">
+        <div className="flex flex-col items-center gap-3">
+          <ShoppingCart className="h-8 w-8 animate-bounce text-violet-400" />
+          <p className="text-sm font-medium">Cargando ventas del sistema...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 font-sans text-slate-100 pb-12">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Ventas</h1>
-        <p className="text-muted-foreground">Historial completo de ventas</p>
+        <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-violet-200 to-blue-400 bg-clip-text text-transparent">
+          Historial de Ventas & Devoluciones
+        </h1>
+        <p className="text-xs text-violet-300/70">Registro completo de transacciones y devoluciones</p>
       </div>
 
       <div className="flex flex-col gap-4">
-        {sales.map((sale) => (
-          <Card key={sale.id} className="border-border bg-card">
-            <CardHeader>
-              <div className="flex items-start justify-between">
+        {sales.length === 0 ? (
+          <p className="text-xs text-violet-300/60">No hay ventas registradas.</p>
+        ) : (
+          sales.map((sale) => (
+            <div
+              key={sale.id}
+              className="rounded-2xl border border-violet-500/20 bg-violet-950/30 p-5 shadow-xl backdrop-blur-xl transition-all hover:border-violet-500/40"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-violet-500/10 pb-4">
                 <div>
-                  <CardTitle className="text-foreground">Venta #{sale.id.slice(0, 8)}</CardTitle>
-                  <p className="text-sm text-muted-foreground">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    Venta #{sale.id.slice(0, 8)}
+                  </h3>
+                  <p className="text-xs text-violet-300/60 mt-0.5">
                     {format(new Date(sale.createdAt), "PPP 'a las' p", { locale: es })}
                   </p>
-                  <p className="text-sm text-muted-foreground">Vendedor: {sale.vendedor.nombre}</p>
+                  <p className="text-xs text-violet-300/80 font-medium">Vendedor: {sale.vendedor?.nombre || "N/A"}</p>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <span className="text-2xl font-bold text-primary">${sale.total}</span>
-                  <Badge variant={sale.status === "completada" ? "default" : "destructive"}>{sale.status}</Badge>
+                <div className="flex flex-col items-end gap-1.5">
+                  <span className="text-2xl font-black text-white">${Number(sale.total).toFixed(2)}</span>
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase border ${
+                      sale.status === "completada"
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                        : sale.status === "devuelta"
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                        : "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                    }`}
+                  >
+                    {sale.status}
+                  </span>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium text-foreground">Productos:</p>
-                {sale.items.map((item: any) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>
-                      {item.producto.nombre} x{item.cantidad}
-                    </span>
-                    <span>${item.subtotal}</span>
-                  </div>
-                ))}
+
+              <div className="mt-4 flex flex-col gap-2">
+                <span className="text-xs font-semibold text-violet-300/80">Detalle de Productos:</span>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {sale.items?.map((item: any) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between rounded-xl bg-violet-900/20 p-2.5 px-3 border border-violet-800/30 text-xs"
+                    >
+                      <span className="text-violet-200">
+                        {item.producto?.nombre} <strong className="text-violet-400">x{item.cantidad}</strong> {item.talle ? `(${item.talle})` : ""}
+                      </span>
+                      <span className="font-bold text-white">${Number(item.subtotal).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+
+              {sale.status === "completada" && (
+                <div className="mt-4 flex justify-end pt-2 border-t border-violet-500/10">
+                  <Button
+                    onClick={() => handleRefund(sale.id)}
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs font-semibold text-amber-300 border border-amber-500/30 bg-amber-950/20 hover:bg-amber-900/40 rounded-xl flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" /> Procesar Devolución
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

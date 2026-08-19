@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
+import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,9 +21,11 @@ import {
   DollarSign,
   AlertTriangle,
   UserCheck,
+  Loader2,
 } from "lucide-react"
 
 export default function AdminDashboard() {
+  const toast = useToast()
   const { business } = useAuth()
   const [activeTab, setActiveTab] = useState<"overview" | "employees" | "sales">("overview")
   const [stats, setStats] = useState<any>(null)
@@ -32,6 +35,7 @@ export default function AdminDashboard() {
   const [copiedCode, setCopiedCode] = useState(false)
   const [editingCodeUser, setEditingCodeUser] = useState<string | null>(null)
   const [newEmpCode, setNewEmpCode] = useState("")
+  const [processingId, setProcessingId] = useState<string | null>(null)
 
   const loadData = async () => {
     try {
@@ -59,7 +63,7 @@ export default function AdminDashboard() {
 
       setEmployees(empData)
       setSales(salesList)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading admin data:", error)
     } finally {
       setLoading(false)
@@ -74,48 +78,62 @@ export default function AdminDashboard() {
     if (business?.inviteCode) {
       navigator.clipboard.writeText(business.inviteCode)
       setCopiedCode(true)
+      toast.success("¡Código de empleados copiado al portapapeles!", "Copiado")
       setTimeout(() => setCopiedCode(false), 2000)
     }
   }
 
   const handleToggleShift = async (userId: string) => {
+    setProcessingId(`shift-${userId}`)
     try {
       await api.toggleUserShift(userId)
+      toast.success("Estado de turno actualizado correctamente", "Fichaje Registrado")
       loadData()
     } catch (err: any) {
-      alert(err.message || "Error al cambiar estado de turno")
+      toast.error(err.message || "Error al cambiar estado de turno", "Error")
+    } finally {
+      setProcessingId(null)
     }
   }
 
   const handleDepartmentChange = async (userId: string, departamento: string) => {
+    setProcessingId(`dept-${userId}`)
     try {
       await api.updateUserDepartment(userId, departamento)
+      toast.success(`Departamento asignado: ${departamento}`, "Área Actualizada")
       loadData()
     } catch (err: any) {
-      alert(err.message || "Error al actualizar departamento")
+      toast.error(err.message || "Error al actualizar departamento", "Error")
+    } finally {
+      setProcessingId(null)
     }
   }
 
   const handleSaveEmpCode = async (userId: string) => {
+    setProcessingId(`code-${userId}`)
     try {
       await api.updateEmployeeCode(userId, newEmpCode)
+      toast.success("Código de empleado asignado exitosamente", "Código Guardado")
       setEditingCodeUser(null)
       setNewEmpCode("")
       loadData()
     } catch (err: any) {
-      alert(err.message || "Error al actualizar código de empleado")
+      toast.error(err.message || "Error al actualizar código de empleado", "Error")
+    } finally {
+      setProcessingId(null)
     }
   }
 
   const handleRefundSale = async (saleId: string) => {
-    if (confirm("¿Confirmas la devolución de esta venta? El stock del producto será devuelto automáticamente.")) {
-      try {
-        await api.refundSale(saleId)
-        alert("Devolución procesada y stock reembolsado exitosamente")
-        loadData()
-      } catch (err: any) {
-        alert(err.message || "Error al procesar devolución")
-      }
+    setProcessingId(`refund-${saleId}`)
+    try {
+      await api.refundSale(saleId)
+      toast.success("Devolución procesada exitosamente y stock reembolsado", "Devolución Exitosa")
+      loadData()
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar devolución", "Error de Devolución")
+    } finally {
+      setProcessingId(null)
     }
   }
 
@@ -123,7 +141,7 @@ export default function AdminDashboard() {
     return (
       <div className="flex h-96 items-center justify-center text-violet-300">
         <div className="flex flex-col items-center gap-3">
-          <BarChart3 className="h-8 w-8 animate-bounce text-violet-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
           <p className="text-sm font-medium">Cargando datos del panel...</p>
         </div>
       </div>
@@ -392,8 +410,13 @@ export default function AdminDashboard() {
                             value={newEmpCode}
                             onChange={(e) => setNewEmpCode(e.target.value)}
                           />
-                          <Button onClick={() => handleSaveEmpCode(emp.id)} size="sm" className="h-6 px-2 text-[10px] bg-emerald-600">
-                            OK
+                          <Button
+                            onClick={() => handleSaveEmpCode(emp.id)}
+                            disabled={processingId === `code-${emp.id}`}
+                            size="sm"
+                            className="h-6 px-2 text-[10px] bg-emerald-600"
+                          >
+                            {processingId === `code-${emp.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : "OK"}
                           </Button>
                         </div>
                       ) : (
@@ -414,6 +437,7 @@ export default function AdminDashboard() {
                       <Select
                         value={emp.departamento || "Ventas"}
                         onValueChange={(val) => handleDepartmentChange(emp.id, val)}
+                        disabled={processingId === `dept-${emp.id}`}
                       >
                         <SelectTrigger className="h-7 w-32 text-xs bg-violet-950/60 border-violet-500/20 text-white">
                           <SelectValue placeholder="Seleccionar" />
@@ -438,6 +462,7 @@ export default function AdminDashboard() {
                   {/* Shift Toggle Button */}
                   <Button
                     onClick={() => handleToggleShift(emp.id)}
+                    disabled={processingId === `shift-${emp.id}`}
                     variant="ghost"
                     size="sm"
                     className={`w-full text-xs font-semibold rounded-xl border ${
@@ -446,7 +471,13 @@ export default function AdminDashboard() {
                         : "border-emerald-500/30 bg-emerald-950/20 text-emerald-300 hover:bg-emerald-900/30"
                     }`}
                   >
-                    {emp.inShift ? "Marcar Salida de Turno" : "Marcar Entrada (Fichaje)"}
+                    {processingId === `shift-${emp.id}` ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : emp.inShift ? (
+                      "Marcar Salida de Turno"
+                    ) : (
+                      "Marcar Entrada (Fichaje)"
+                    )}
                   </Button>
                 </div>
               ))
@@ -510,11 +541,20 @@ export default function AdminDashboard() {
                   {sale.status === "completada" && (
                     <Button
                       onClick={() => handleRefundSale(sale.id)}
+                      disabled={processingId === `refund-${sale.id}`}
                       size="sm"
                       variant="ghost"
                       className="text-xs font-semibold text-amber-300 border border-amber-500/30 bg-amber-950/20 hover:bg-amber-900/40 rounded-xl flex items-center gap-1.5"
                     >
-                      <RotateCcw className="h-3.5 w-3.5" /> Procesar Devolución
+                      {processingId === `refund-${sale.id}` ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Procesando...
+                        </>
+                      ) : (
+                        <>
+                          <RotateCcw className="h-3.5 w-3.5" /> Procesar Devolución
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>

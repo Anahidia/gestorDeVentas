@@ -2,21 +2,24 @@
 
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
+import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { CheckCircle, XCircle, Clock, Package2 } from "lucide-react"
+import { CheckCircle, XCircle, Clock, Package2, Loader2 } from "lucide-react"
 
 export default function EncargosPage() {
+  const toast = useToast()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [processingId, setProcessingId] = useState<string | null>(null)
 
   const loadOrders = async () => {
     try {
       setLoading(true)
       const data = await api.getOrders()
       setOrders(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading orders:", error)
     } finally {
       setLoading(false)
@@ -28,22 +31,28 @@ export default function EncargosPage() {
   }, [])
 
   const handleComplete = async (id: string) => {
+    setProcessingId(`complete-${id}`)
     try {
       await api.completeOrder(id)
+      toast.success("Encargo marcado como completado", "Encargo Listo")
       loadOrders()
     } catch (error: any) {
-      alert(error.message || "Error al completar encargo")
+      toast.error(error.message || "Error al completar encargo", "Error")
+    } finally {
+      setProcessingId(null)
     }
   }
 
   const handleCancel = async (id: string) => {
-    if (confirm("¿Estás seguro de cancelar este encargo?")) {
-      try {
-        await api.cancelOrder(id)
-        loadOrders()
-      } catch (error: any) {
-        alert(error.message || "Error al cancelar encargo")
-      }
+    setProcessingId(`cancel-${id}`)
+    try {
+      await api.cancelOrder(id)
+      toast.success("Encargo cancelado y stock liberado", "Encargo Cancelado")
+      loadOrders()
+    } catch (error: any) {
+      toast.error(error.message || "Error al cancelar encargo", "Error")
+    } finally {
+      setProcessingId(null)
     }
   }
 
@@ -51,7 +60,7 @@ export default function EncargosPage() {
     return (
       <div className="flex h-96 items-center justify-center text-violet-300">
         <div className="flex flex-col items-center gap-3">
-          <Clock className="h-8 w-8 animate-bounce text-violet-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
           <p className="text-sm font-medium">Cargando encargos...</p>
         </div>
       </div>
@@ -124,18 +133,32 @@ export default function EncargosPage() {
                 <div className="flex gap-2 mt-4 pt-3 border-t border-violet-500/10">
                   <Button
                     onClick={() => handleComplete(order.id)}
+                    disabled={processingId === `complete-${order.id}`}
                     size="sm"
                     className="flex-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 rounded-xl"
                   >
-                    <CheckCircle className="h-3.5 w-3.5 mr-1" /> Completar
+                    {processingId === `complete-${order.id}` ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" /> Completar
+                      </>
+                    )}
                   </Button>
                   <Button
                     onClick={() => handleCancel(order.id)}
+                    disabled={processingId === `cancel-${order.id}`}
                     size="sm"
                     variant="ghost"
                     className="flex-1 text-xs font-semibold text-rose-300 bg-rose-950/20 hover:bg-rose-900/30 border border-rose-800/30 rounded-xl"
                   >
-                    <XCircle className="h-3.5 w-3.5 mr-1" /> Cancelar
+                    {processingId === `cancel-${order.id}` ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <XCircle className="h-3.5 w-3.5 mr-1" /> Cancelar
+                      </>
+                    )}
                   </Button>
                 </div>
               )}

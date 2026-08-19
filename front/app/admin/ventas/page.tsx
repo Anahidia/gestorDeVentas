@@ -2,21 +2,24 @@
 
 import { useEffect, useState } from "react"
 import { api } from "@/lib/api"
+import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { ShoppingCart, RotateCcw, ArrowLeft } from "lucide-react"
+import { ShoppingCart, RotateCcw, Loader2 } from "lucide-react"
 
 export default function VentasPage() {
+  const toast = useToast()
   const [sales, setSales] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [refundingId, setRefundingId] = useState<string | null>(null)
 
   const loadSales = async () => {
     try {
       setLoading(true)
       const data = await api.getSales()
       setSales(data)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading sales:", error)
     } finally {
       setLoading(false)
@@ -28,14 +31,15 @@ export default function VentasPage() {
   }, [])
 
   const handleRefund = async (saleId: string) => {
-    if (confirm("¿Estás seguro de registrar la devolución de esta venta? El stock se reingresará automáticamente.")) {
-      try {
-        await api.refundSale(saleId)
-        alert("Devolución procesada exitosamente")
-        loadSales()
-      } catch (error: any) {
-        alert(error.message || "Error al procesar devolución")
-      }
+    setRefundingId(saleId)
+    try {
+      await api.refundSale(saleId)
+      toast.success("¡Devolución procesada exitosamente y stock reembolsado!", "Devolución Guardada")
+      loadSales()
+    } catch (error: any) {
+      toast.error(error.message || "Error al procesar devolución", "Error")
+    } finally {
+      setRefundingId(null)
     }
   }
 
@@ -43,8 +47,8 @@ export default function VentasPage() {
     return (
       <div className="flex h-96 items-center justify-center text-violet-300">
         <div className="flex flex-col items-center gap-3">
-          <ShoppingCart className="h-8 w-8 animate-bounce text-violet-400" />
-          <p className="text-sm font-medium">Cargando ventas del sistema...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
+          <p className="text-sm font-medium">Cargando historial de ventas...</p>
         </div>
       </div>
     )
@@ -115,11 +119,20 @@ export default function VentasPage() {
                 <div className="mt-4 flex justify-end pt-2 border-t border-violet-500/10">
                   <Button
                     onClick={() => handleRefund(sale.id)}
+                    disabled={refundingId === sale.id}
                     size="sm"
                     variant="ghost"
                     className="text-xs font-semibold text-amber-300 border border-amber-500/30 bg-amber-950/20 hover:bg-amber-900/40 rounded-xl flex items-center gap-1.5"
                   >
-                    <RotateCcw className="h-3.5 w-3.5" /> Procesar Devolución
+                    {refundingId === sale.id ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Procesando Devolución...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="h-3.5 w-3.5" /> Procesar Devolución
+                      </>
+                    )}
                   </Button>
                 </div>
               )}

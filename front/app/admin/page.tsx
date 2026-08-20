@@ -5,8 +5,6 @@ import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import Image from "next/image"
@@ -32,7 +30,7 @@ import {
 
 export default function AdminDashboard() {
   const toast = useToast()
-  const { business } = useAuth()
+  const { user, business } = useAuth()
   const [activeTab, setActiveTab] = useState<"overview" | "employees" | "sales" | "inventory">("overview")
   const [stats, setStats] = useState<any>(null)
   const [employees, setEmployees] = useState<any[]>([])
@@ -40,8 +38,6 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [copiedCode, setCopiedCode] = useState(false)
-  const [editingCodeUser, setEditingCodeUser] = useState<string | null>(null)
-  const [newEmpCode, setNewEmpCode] = useState("")
   const [processingId, setProcessingId] = useState<string | null>(null)
 
   const loadData = async () => {
@@ -86,7 +82,7 @@ export default function AdminDashboard() {
     if (business?.inviteCode) {
       navigator.clipboard.writeText(business.inviteCode)
       setCopiedCode(true)
-      toast.success("¡Código de empleados copiado al portapapeles!", "Copiado")
+      toast.success("¡Código del comercio copiado al portapapeles!", "Código de Comercio Copiado")
       setTimeout(() => setCopiedCode(false), 2000)
     }
   }
@@ -112,21 +108,6 @@ export default function AdminDashboard() {
       loadData()
     } catch (err: any) {
       toast.error(err.message || "Error al actualizar departamento", "Error")
-    } finally {
-      setProcessingId(null)
-    }
-  }
-
-  const handleSaveEmpCode = async (userId: string) => {
-    setProcessingId(`code-${userId}`)
-    try {
-      await api.updateEmployeeCode(userId, newEmpCode)
-      toast.success("Código de empleado asignado exitosamente", "Código Guardado")
-      setEditingCodeUser(null)
-      setNewEmpCode("")
-      loadData()
-    } catch (err: any) {
-      toast.error(err.message || "Error al actualizar código de empleado", "Error")
     } finally {
       setProcessingId(null)
     }
@@ -167,7 +148,7 @@ export default function AdminDashboard() {
             Panel de Control & Gestión
           </h1>
           <p className="text-xs text-violet-300/70">
-            {business ? `Local: ${business.nombre}` : "Gestión centralizada de tu comercio"}
+            {business ? `Comercio: ${business.nombre}` : "Gestión centralizada de tu comercio"}
           </p>
         </div>
 
@@ -179,7 +160,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] uppercase tracking-wider font-semibold text-cyan-300">
-                Código de Empleados
+                Código del Comercio (Para Empleados)
               </span>
               <span className="text-sm font-mono font-bold text-white tracking-widest">
                 {business.inviteCode}
@@ -284,7 +265,7 @@ export default function AdminDashboard() {
               : "border-transparent text-violet-300/60 hover:text-white"
           }`}
         >
-          <Users className="h-4 w-4" /> Fichaje & Empleados ({employees.length})
+          <Users className="h-4 w-4" /> Fichaje & Personal del Comercio ({employees.length})
         </button>
         <button
           onClick={() => setActiveTab("sales")}
@@ -373,17 +354,28 @@ export default function AdminDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-blue-500/20 bg-blue-950/20 p-5 backdrop-blur-xl">
             <div>
               <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
-                <Users className="h-5 w-5 text-blue-400" /> Control de Empleados & Fichaje de Turnos
+                <Users className="h-5 w-5 text-blue-400" /> Personal del Comercio ({business?.nombre || "Comercio"})
               </h2>
               <p className="text-xs text-blue-200/70">
-                Gestiona el horario de entrada, departamentos y códigos únicos de tus empleados
+                Muestra exclusivamente al dueño/administrador y a los empleados registrados con el código del comercio (<strong>{business?.inviteCode || "Código del Comercio"}</strong>)
               </p>
             </div>
+
+            {business?.inviteCode && (
+              <Button
+                onClick={handleCopyInviteCode}
+                size="sm"
+                className="bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 border border-cyan-500/40 rounded-xl text-xs flex items-center gap-1.5"
+              >
+                {copiedCode ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                Copiar Código del Comercio ({business.inviteCode})
+              </Button>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {employees.length === 0 ? (
-              <p className="text-xs text-violet-300/60 col-span-full">No hay empleados registrados aún.</p>
+              <p className="text-xs text-violet-300/60 col-span-full">No hay empleados vinculados a este código de comercio aún.</p>
             ) : (
               employees.map((emp) => (
                 <div
@@ -417,67 +409,11 @@ export default function AdminDashboard() {
                     </span>
                   </div>
 
-                  {/* Employee Code & Department */}
-                  <div className="flex flex-col gap-2 rounded-xl bg-violet-900/20 p-3 border border-violet-800/30 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-violet-300/70 font-medium">Código Único:</span>
-                      {editingCodeUser === emp.id ? (
-                        <div className="flex gap-1 items-center">
-                          <Input
-                            size={1}
-                            className="h-6 w-24 text-xs bg-violet-950 text-white font-mono border-violet-500/40"
-                            placeholder="EMP-001"
-                            value={newEmpCode}
-                            onChange={(e) => setNewEmpCode(e.target.value)}
-                          />
-                          <Button
-                            onClick={() => handleSaveEmpCode(emp.id)}
-                            disabled={processingId === `code-${emp.id}`}
-                            size="sm"
-                            className="h-6 px-2 text-[10px] bg-emerald-600"
-                          >
-                            {processingId === `code-${emp.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : "OK"}
-                          </Button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setEditingCodeUser(emp.id)
-                            setNewEmpCode(emp.codigoEmpleado || "")
-                          }}
-                          className="font-mono font-bold text-cyan-300 hover:underline"
-                        >
-                          {emp.codigoEmpleado || "+ Asignar Código"}
-                        </button>
-                      )}
+                  {emp.inShift && emp.lastCheckIn && (
+                    <div className="text-[11px] text-emerald-300/80 flex items-center gap-1 bg-emerald-950/20 p-2 rounded-xl border border-emerald-500/20">
+                      <Clock className="h-3 w-3" /> Llegada hoy: {new Date(emp.lastCheckIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} hs
                     </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-violet-300/70 font-medium">Área / Departamento:</span>
-                      <Select
-                        value={emp.departamento || "Ventas"}
-                        onValueChange={(val) => handleDepartmentChange(emp.id, val)}
-                        disabled={processingId === `dept-${emp.id}`}
-                      >
-                        <SelectTrigger className="h-7 w-32 text-xs bg-violet-950/60 border-violet-500/20 text-white">
-                          <SelectValue placeholder="Seleccionar" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-violet-950 border-violet-800 text-white">
-                          <SelectItem value="Caja">Caja</SelectItem>
-                          <SelectItem value="Ventas">Ventas</SelectItem>
-                          <SelectItem value="Atención al Cliente">Atención Cliente</SelectItem>
-                          <SelectItem value="Depósito">Depósito / Stock</SelectItem>
-                          <SelectItem value="Gerencia">Gerencia</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {emp.inShift && emp.lastCheckIn && (
-                      <div className="mt-1 text-[11px] text-emerald-300/80 flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> Llegada: {new Date(emp.lastCheckIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} hs
-                      </div>
-                    )}
-                  </div>
+                  )}
 
                   {/* Shift Toggle Button */}
                   <Button

@@ -49,6 +49,9 @@ export class ProductsController {
     if (req?.user?.id) {
       dto.creadoPorId = req.user.id
     }
+    if (req?.user?.businessId) {
+      dto.businessId = req.user.businessId
+    }
 
     if (file) {
       try {
@@ -74,12 +77,14 @@ export class ProductsController {
 
   @Get()
   findAll(
+    @Request() req: any,
     @Query("includeInactive") includeInactive?: string,
     @Query("categoryId") categoryId?: string,
     @Query("search") search?: string,
     @Query("talle") talle?: string,
   ) {
-    return this.productsService.findAll(includeInactive === "true", categoryId, search, talle)
+    const businessId = req?.user?.businessId
+    return this.productsService.findAll(includeInactive === "true", categoryId, search, talle, businessId)
   }
 
   @Get(":id")

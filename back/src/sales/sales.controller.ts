@@ -11,17 +11,16 @@ import { UserRole } from "../users/entities/user.entity"
 export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
-  // ✅ Usar @Body() para que NestJS reciba el body correctamente
   @Post()
   create(@Body() createSaleDto: CreateSaleDto, @Request() req) {
-    return this.salesService.create(createSaleDto, req.user.id)
+    return this.salesService.create(createSaleDto, req.user.id, req.user.businessId)
   }
 
   @Get()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  findAll() {
-    return this.salesService.findAll()
+  findAll(@Request() req) {
+    return this.salesService.findAll(req.user.businessId)
   }
 
   @Get("my-sales")
@@ -32,8 +31,8 @@ export class SalesController {
   @Get("stats")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  getStats() {
-    return this.salesService.getStats()
+  getStats(@Request() req) {
+    return this.salesService.getStats(req.user.businessId)
   }
 
   @Get(":id")

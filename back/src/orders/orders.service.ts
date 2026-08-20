@@ -1,14 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from "@nestjs/common"
-import { Repository } from "typeorm"
-import { LessThan } from "typeorm"
-import { Order } from "./entities/order.entity"
-import { OrderStatus } from "./entities/order.entity"
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, OnModuleInit } from "@nestjs/common"
+import { Repository, LessThan } from "typeorm"
+import { Order, OrderStatus } from "./entities/order.entity"
 import { ProductsService } from "../products/products.service"
 import { CreateOrderDto } from "./dto/create-order.dto"
+import { User, UserRole } from "../users/entities/user.entity"
 import { InjectRepository } from "@nestjs/typeorm"
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnModuleInit {
   constructor(
     @InjectRepository(Order)
     private readonly ordersRepository: Repository<Order>,
@@ -17,7 +16,26 @@ export class OrdersService {
     private readonly productsService: ProductsService,
   ) {}
 
-  async create(createOrderDto: CreateOrderDto, vendedorId: string): Promise<Order> {
+  async onModuleInit() {
+    try {
+      const admin = await this.ordersRepository.manager.findOne(User, {
+        where: { role: UserRole.ADMIN },
+        relations: ["business"],
+      })
+      if (admin && admin.businessId) {
+        await this.ordersRepository
+          .createQueryBuilder()
+          .update(Order)
+          .set({ businessId: admin.businessId })
+          .where("businessId IS NULL")
+          .execute()
+      }
+    } catch (e) {
+      console.warn("Could not backfill businessId for orders:", e)
+    }
+  }
+
+  async create(createOrderDto: CreateOrderDto, vendedorId: string, businessId?: string): Promise<Order> {
     const product = await this.productsService.findOne(createOrderDto.productoId)
 
     if (createOrderDto.talle) {
@@ -44,6 +62,7 @@ export class OrdersService {
     const order = this.ordersRepository.create({
       ...createOrderDto,
       vendedorId,
+      businessId,
       fechaExpiracion,
       status: OrderStatus.ACTIVO,
     })
@@ -51,16 +70,17 @@ export class OrdersService {
     return this.ordersRepository.save(order)
   }
 
-  async findAll(): Promise<Order[]> {
+  async findAll(businessId?: string): Promise<Order[]> {
     return this.ordersRepository.find({
+      where: businessId ? { businessId } : {},
       relations: ["producto", "vendedor"],
       order: { createdAt: "DESC" },
     })
   }
 
-  async findActive(): Promise<Order[]> {
+  async findActive(businessId?: string): Promise<Order[]> {
     return this.ordersRepository.find({
-      where: { status: OrderStatus.ACTIVO },
+      where: businessId ? { status: OrderStatus.ACTIVO, businessId } : { status: OrderStatus.ACTIVO },
       relations: ["producto", "vendedor"],
       order: { createdAt: "DESC" },
     })
@@ -152,18 +172,20 @@ export class OrdersService {
     }
   }
 
-  async getStats() {
-    const activeOrders = await this.ordersRepository.count({
-      where: { status: OrderStatus.ACTIVO },
-    })
+  async getStats(businessId?: string) {
+    const whereActive: any = { status: OrderStatus.ACTIVO }
+    const whereCompleted: any = { status: OrderStatus.COMPLETADO }
+    const whereExpired: any = { status: OrderStatus.EXPIRADO }
 
-    const completedOrders = await this.ordersRepository.count({
-      where: { status: OrderStatus.COMPLETADO },
-    })
+    if (businessId) {
+      whereActive.businessId = businessId
+      whereCompleted.businessId = businessId
+      whereExpired.businessId = businessId
+    }
 
-    const expiredOrders = await this.ordersRepository.count({
-      where: { status: OrderStatus.EXPIRADO },
-    })
+    const activeOrders = await this.ordersRepository.count({ where: whereActive })
+    const completedOrders = await this.ordersRepository.count({ where: whereCompleted })
+    const expiredOrders = await this.ordersRepository.count({ where: whereExpired })
 
     return {
       activos: activeOrders,

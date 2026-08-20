@@ -9,6 +9,7 @@ import {
   JoinColumn,
 } from "typeorm"
 import { User } from "../../users/entities/user.entity"
+import { Business } from "../../users/entities/business.entity"
 import { SaleItem } from "./sale-item.entity"
 
 export enum SaleStatus {
@@ -41,6 +42,13 @@ export class Sale {
 
   @Column()
   vendedorId: string
+
+  @Column({ nullable: true })
+  businessId: string
+
+  @ManyToOne(() => Business, { nullable: true })
+  @JoinColumn({ name: "businessId" })
+  business: Business
 
   @OneToMany(
     () => SaleItem,

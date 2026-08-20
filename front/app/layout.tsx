@@ -11,8 +11,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Sistema de Gestión de Ventas",
-  description: "Sistema completo para gestión de ventas, productos y encargos",
+  title: "Fullstore — Sistema de Gestión, POS & Control de Inventario",
+  description: "Plataforma integral para gestión de comercios, ventas POS, productos por talles y fichaje laboral",
 }
 
 export default function RootLayout({

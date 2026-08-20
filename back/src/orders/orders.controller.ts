@@ -7,26 +7,25 @@ import { Roles } from "../auth/decorators/roles.decorator"
 import { UserRole } from "../users/entities/user.entity"
 
 @Controller("orders")
-@UseGuards(JwtAuthGuard) // Todos los endpoints requieren JWT
+@UseGuards(JwtAuthGuard)
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   async create(@Body() createOrderDto: CreateOrderDto, @Req() req) {
-    // ✅ req.user viene del JwtAuthGuard
-    return this.ordersService.create(createOrderDto, req.user.id)
+    return this.ordersService.create(createOrderDto, req.user.id, req.user.businessId)
   }
 
   @Get()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  findAll() {
-    return this.ordersService.findAll()
+  findAll(@Req() req) {
+    return this.ordersService.findAll(req.user.businessId)
   }
 
   @Get("active")
-  findActive() {
-    return this.ordersService.findActive()
+  findActive(@Req() req) {
+    return this.ordersService.findActive(req.user.businessId)
   }
 
   @Get("my-orders")
@@ -37,8 +36,8 @@ export class OrdersController {
   @Get("stats")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  getStats() {
-    return this.ordersService.getStats()
+  getStats(@Req() req) {
+    return this.ordersService.getStats(req.user.businessId)
   }
 
   @Get(":id")

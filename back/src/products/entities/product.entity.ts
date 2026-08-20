@@ -13,6 +13,7 @@ import { Order } from "../../orders/entities/order.entity"
 import { Category } from "../../categories/entities/category.entity"
 import { ProductSize } from "./product-size.entity"
 import { User } from "../../users/entities/user.entity"
+import { Business } from "../../users/entities/business.entity"
 
 @Entity("products")
 export class Product {
@@ -56,6 +57,13 @@ export class Product {
   @ManyToOne(() => User, { nullable: true, eager: true })
   @JoinColumn({ name: "creadoPorId" })
   creadoPor: User
+
+  @Column({ nullable: true })
+  businessId: string
+
+  @ManyToOne(() => Business, { nullable: true })
+  @JoinColumn({ name: "businessId" })
+  business: Business
 
   @OneToMany(
     () => ProductSize,

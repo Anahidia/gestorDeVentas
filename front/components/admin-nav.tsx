@@ -14,14 +14,16 @@ export function AdminNav() {
   const { user, business, logout } = useAuth()
   const [copied, setCopied] = useState(false)
 
+  const businessCode = business?.inviteCode || user?.business?.inviteCode
+
   const handleLogout = () => {
     logout()
     router.push("/login")
   }
 
   const handleCopyCode = () => {
-    if (business?.inviteCode) {
-      navigator.clipboard.writeText(business.inviteCode)
+    if (businessCode) {
+      navigator.clipboard.writeText(businessCode)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -43,7 +45,7 @@ export function AdminNav() {
           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-900/40 border border-violet-500/30 text-violet-300">
             <Store className="h-3.5 w-3.5" />
           </div>
-          <span>{business?.nombre || "Admin Panel"}</span>
+          <span>{business?.nombre || user?.business?.nombre || "Admin Panel"}</span>
         </Link>
 
         {/* Center: Liquid Meniscus Subtle Floating Dock */}
@@ -71,18 +73,18 @@ export function AdminNav() {
           </div>
         </div>
 
-        {/* Right: Code, User & Logout */}
+        {/* Right: Green Code Pill, User & Logout */}
         <div className="flex items-center gap-2.5">
-          {business?.inviteCode && (
+          {businessCode && (
             <button
               type="button"
               onClick={handleCopyCode}
-              title="Copiar código de empleados"
-              className="hidden lg:flex items-center gap-1.5 rounded-full border border-cyan-500/20 bg-cyan-950/20 px-3 py-1 text-[11px] font-mono text-cyan-300 transition-all hover:bg-cyan-900/30"
+              title="Haz clic para copiar el código del comercio para tus empleados"
+              className="flex items-center gap-1.5 rounded-full border border-emerald-500/40 bg-gradient-to-r from-emerald-950/70 via-emerald-900/60 to-teal-950/70 px-3 py-1 text-[11px] font-mono font-bold text-emerald-200 transition-all hover:brightness-110 shadow-lg shadow-emerald-950/40 cursor-pointer"
             >
-              <Key className="h-3 w-3 text-cyan-400" />
-              <span>Código: <strong className="text-white">{business.inviteCode}</strong></span>
-              {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3 text-cyan-400" />}
+              <Key className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
+              <span>Código: <strong className="text-white tracking-widest">{businessCode}</strong></span>
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5 text-emerald-400/80" />}
             </button>
           )}
 

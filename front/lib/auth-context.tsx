@@ -106,10 +106,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
+    setLoading(true)
     api.clearToken()
     localStorage.removeItem("business")
     setUser(null)
     setBusiness(null)
+    setTimeout(() => {
+      setLoading(false)
+    }, 500)
   }
 
   const isAdmin = user?.role?.toLowerCase() === "admin"

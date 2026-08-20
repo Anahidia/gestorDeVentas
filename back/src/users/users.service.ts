@@ -1,17 +1,38 @@
-import { Injectable, NotFoundException } from "@nestjs/common"
+import { Injectable, NotFoundException, OnModuleInit } from "@nestjs/common"
 import { Repository } from "typeorm"
 import { User } from "./entities/user.entity"
 import { Business } from "./entities/business.entity"
 import { InjectRepository } from "@nestjs/typeorm"
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(Business)
     private businessRepository: Repository<Business>,
   ) {}
+
+  async onModuleInit() {
+    try {
+      let defaultBusiness = await this.businessRepository.findOne({ where: {} })
+      if (!defaultBusiness) {
+        defaultBusiness = await this.createBusiness({
+          nombre: "Comercio Principal",
+          inviteCode: "L7D-7777",
+        })
+      }
+
+      await this.usersRepository
+        .createQueryBuilder()
+        .update(User)
+        .set({ businessId: defaultBusiness.id })
+        .where("businessId IS NULL")
+        .execute()
+    } catch (e) {
+      console.warn("Could not backfill businessId for users:", e)
+    }
+  }
 
   async create(userData: Partial<User>): Promise<User> {
     const user = this.usersRepository.create(userData)

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Delete, Body, UseGuards } from "@nestjs/common"
+import { Controller, Get, Post, Patch, Param, Delete, Body, UseGuards, Request } from "@nestjs/common"
 import { CategoriesService } from "./categories.service"
 import { CreateCategoryDto } from "./dto/create-category.dto"
 import { UpdateCategoryDto } from "./dto/update-category.dto"
@@ -11,13 +11,15 @@ export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
-  create(@Body() createCategoryDto: CreateCategoryDto) {
-    return this.categoriesService.create(createCategoryDto)
+  create(@Body() createCategoryDto: CreateCategoryDto, @Request() req: any) {
+    const businessId = req?.user?.businessId
+    return this.categoriesService.create({ ...createCategoryDto, businessId })
   }
 
   @Get()
-  findAll() {
-    return this.categoriesService.findAll()
+  findAll(@Request() req: any) {
+    const businessId = req?.user?.businessId
+    return this.categoriesService.findAll(false, businessId)
   }
 
   @Get(":id")

@@ -21,17 +21,21 @@ export class ProductsService implements OnModuleInit {
     try {
       const admin = await this.productsRepository.manager.findOne(User, {
         where: { role: UserRole.ADMIN },
+        relations: ["business"],
       })
       if (admin) {
         await this.productsRepository
           .createQueryBuilder()
           .update(Product)
-          .set({ creadoPorId: admin.id })
-          .where("creadoPorId IS NULL")
+          .set({
+            creadoPorId: admin.id,
+            ...(admin.businessId ? { businessId: admin.businessId } : {}),
+          })
+          .where("businessId IS NULL")
           .execute()
       }
     } catch (e) {
-      console.warn("Could not backfill creadoPorId:", e)
+      console.warn("Could not backfill businessId for products:", e)
     }
   }
 
@@ -53,7 +57,13 @@ export class ProductsService implements OnModuleInit {
     return saved
   }
 
-  async findAll(includeInactive = false, categoryId?: string, search?: string, talle?: string): Promise<Product[]> {
+  async findAll(
+    includeInactive = false,
+    categoryId?: string,
+    search?: string,
+    talle?: string,
+    businessId?: string,
+  ): Promise<Product[]> {
     const query = this.productsRepository
       .createQueryBuilder("product")
       .leftJoinAndSelect("product.category", "category")
@@ -62,6 +72,10 @@ export class ProductsService implements OnModuleInit {
 
     if (!includeInactive) {
       query.where("product.isActive = :isActive", { isActive: true })
+    }
+
+    if (businessId) {
+      query.andWhere("product.businessId = :businessId", { businessId })
     }
 
     if (categoryId) {

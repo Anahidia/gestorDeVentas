@@ -1,14 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common"
-import  { Repository } from "typeorm"
-import  { Sale } from "./entities/sale.entity"
-import  { SaleItem } from "./entities/sale-item.entity"
-import  { ProductsService } from "../products/products.service"
-import  { CreateSaleDto } from "./dto/create-sale.dto"
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit } from "@nestjs/common"
+import { Repository } from "typeorm"
+import { Sale } from "./entities/sale.entity"
+import { SaleItem } from "./entities/sale-item.entity"
+import { ProductsService } from "../products/products.service"
+import { CreateSaleDto } from "./dto/create-sale.dto"
 import { SaleStatus } from "./entities/sale.entity"
+import { User, UserRole } from "../users/entities/user.entity"
 import { InjectRepository } from "@nestjs/typeorm"
 
 @Injectable()
-export class SalesService {
+export class SalesService implements OnModuleInit {
   constructor(
     @InjectRepository(Sale)
     private salesRepository: Repository<Sale>,
@@ -17,25 +18,41 @@ export class SalesService {
     private productsService: ProductsService,
   ) {}
 
-  async create(createSaleDto: CreateSaleDto, vendedorId: string): Promise<Sale> {
+  async onModuleInit() {
+    try {
+      const admin = await this.salesRepository.manager.findOne(User, {
+        where: { role: UserRole.ADMIN },
+        relations: ["business"],
+      })
+      if (admin && admin.businessId) {
+        await this.salesRepository
+          .createQueryBuilder()
+          .update(Sale)
+          .set({ businessId: admin.businessId })
+          .where("businessId IS NULL")
+          .execute()
+      }
+    } catch (e) {
+      console.warn("Could not backfill businessId for sales:", e)
+    }
+  }
+
+  async create(createSaleDto: CreateSaleDto, vendedorId: string, businessId?: string): Promise<Sale> {
     for (const item of createSaleDto.items) {
       const product = await this.productsService.findOne(item.productoId)
 
       if (item.talle) {
-        // Verificar stock del talle específico
         const size = product.talles?.find((t) => t.talle === item.talle)
         if (!size || size.stock < item.cantidad) {
           throw new BadRequestException(`Stock insuficiente para ${product.nombre} talle ${item.talle}`)
         }
       } else {
-        // Verificar stock general
         if (product.stock < item.cantidad) {
           throw new BadRequestException(`Stock insuficiente para ${product.nombre}`)
         }
       }
     }
 
-    // Calcular total y crear items
     let total = 0
     const saleItems: SaleItem[] = []
 
@@ -62,10 +79,10 @@ export class SalesService {
       }
     }
 
-    // Crear venta
     const sale = this.salesRepository.create({
       total,
       vendedorId,
+      businessId,
       items: saleItems,
       notas: createSaleDto.notas,
       status: SaleStatus.COMPLETADA,
@@ -74,8 +91,9 @@ export class SalesService {
     return this.salesRepository.save(sale)
   }
 
-  async findAll(): Promise<Sale[]> {
+  async findAll(businessId?: string): Promise<Sale[]> {
     return this.salesRepository.find({
+      where: businessId ? { businessId } : {},
       relations: ["vendedor", "items", "items.producto"],
       order: { createdAt: "DESC" },
     })
@@ -146,8 +164,9 @@ export class SalesService {
     return this.salesRepository.save(sale)
   }
 
-  async getStats() {
+  async getStats(businessId?: string) {
     const allSales = await this.salesRepository.find({
+      where: businessId ? { businessId } : {},
       relations: ["items"],
     })
 

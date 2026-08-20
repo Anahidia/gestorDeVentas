@@ -16,6 +16,7 @@ export enum SaleStatus {
   COMPLETADA = "completada",
   CANCELADA = "cancelada",
   DEVUELTA = "devuelta",
+  SENA_ENCARGO = "seña_encargo",
 }
 
 @Entity("sales")
@@ -49,6 +50,9 @@ export class Sale {
   @ManyToOne(() => Business, { nullable: true })
   @JoinColumn({ name: "businessId" })
   business: Business
+
+  @Column({ nullable: true })
+  encargoId: string
 
   @OneToMany(
     () => SaleItem,

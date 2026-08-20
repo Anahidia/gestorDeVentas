@@ -9,6 +9,7 @@ import { useToast } from "@/lib/toast-context"
 import { Button } from "@/components/ui/button"
 import { ShoppingCart, ClipboardList, LogOut, Store, Clock, Loader2, LogIn, LogOut as ShiftOut, Package } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { CierreCajaModal } from "@/components/cierre-caja-modal"
 
 export function VendedorNav() {
   const pathname = usePathname()
@@ -43,6 +44,7 @@ export function VendedorNav() {
 
   const navItems = [
     { href: "/vendedor", label: "Nueva Venta", icon: ShoppingCart },
+    { href: "/vendedor/ventas", label: "Ventas & Devoluciones", icon: ShoppingCart },
     { href: "/vendedor/products", label: "Cargar Productos", icon: Package },
     { href: "/vendedor/encargos", label: "Mis Encargos", icon: ClipboardList },
   ]
@@ -83,8 +85,10 @@ export function VendedorNav() {
           </div>
         </div>
 
-        {/* Right: Shift Clock-In/Out, User & Exit */}
-        <div className="flex items-center gap-2.5">
+        {/* Right: Shift Clock-In/Out, Cierre de Caja, User & Exit */}
+        <div className="flex items-center gap-2">
+          <CierreCajaModal />
+
           {/* Fichaje Laboral Dynamic Toggle Button */}
           {user && (
             <button
@@ -108,7 +112,7 @@ export function VendedorNav() {
             </button>
           )}
 
-          <span className="text-[11px] font-medium text-cyan-300/80 bg-cyan-950/30 px-2.5 py-1 rounded-full border border-cyan-800/30">
+          <span className="text-[11px] font-medium text-cyan-300/80 bg-cyan-950/30 px-2.5 py-1 rounded-full border border-cyan-800/30 hidden sm:inline">
             {user?.nombre} {user?.departamento ? `(${user.departamento})` : ""}
           </span>
 

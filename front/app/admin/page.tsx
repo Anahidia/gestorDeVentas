@@ -26,16 +26,19 @@ import {
   Calendar,
   User,
   Boxes,
+  Landmark,
 } from "lucide-react"
+import { CierreCajaModal } from "@/components/cierre-caja-modal"
 
 export default function AdminDashboard() {
   const toast = useToast()
   const { user, business } = useAuth()
-  const [activeTab, setActiveTab] = useState<"overview" | "employees" | "sales" | "inventory">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "employees" | "sales" | "inventory" | "closeouts">("overview")
   const [stats, setStats] = useState<any>(null)
   const [employees, setEmployees] = useState<any[]>([])
   const [sales, setSales] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
+  const [closeouts, setCloseouts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [copiedCode, setCopiedCode] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
@@ -43,11 +46,12 @@ export default function AdminDashboard() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [salesStats, ordersStats, productsData, salesList] = await Promise.all([
+      const [salesStats, ordersStats, productsData, salesList, closeoutsList] = await Promise.all([
         api.getSalesStats(),
         api.getOrdersStats(),
         api.getProducts(),
         api.getSales(),
+        api.getCashCloseouts().catch(() => []),
       ])
 
       let empData: any[] = []
@@ -67,6 +71,7 @@ export default function AdminDashboard() {
       setEmployees(empData)
       setSales(salesList)
       setProducts(productsData)
+      setCloseouts(closeoutsList || [])
     } catch (error: any) {
       console.error("Error loading admin data:", error)
     } finally {
@@ -288,6 +293,18 @@ export default function AdminDashboard() {
           }`}
         >
           <Boxes className="h-4 w-4 text-cyan-400" /> Manejo / Control de Inventario ({products.length})
+        </button>
+
+        {/* TAB 5: ARQUEOS & CIERRES DE CAJA */}
+        <button
+          onClick={() => setActiveTab("closeouts")}
+          className={`flex items-center gap-2 px-4 py-3 text-xs font-semibold transition-all border-b-2 ${
+            activeTab === "closeouts"
+              ? "border-emerald-400 text-emerald-200 bg-emerald-950/40 rounded-t-xl"
+              : "border-transparent text-violet-300/60 hover:text-white"
+          }`}
+        >
+          <Landmark className="h-4 w-4 text-emerald-400" /> Arqueos & Cierres de Caja ({closeouts.length})
         </button>
       </div>
 
@@ -615,6 +632,81 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: ARQUEOS & CIERRES DE CAJA */}
+      {activeTab === "closeouts" && (
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-6 backdrop-blur-xl">
+            <div className="flex flex-col">
+              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                <Landmark className="h-5 w-5 text-emerald-400" /> Historial de Arqueos & Cierres de Caja
+              </h3>
+              <p className="text-xs text-emerald-200/70 mt-1">
+                Auditoría detallada del efectivo esperado, contado y diferencias por turno/día realizada por los empleados.
+              </p>
+            </div>
+
+            <CierreCajaModal onSuccess={loadData} />
+          </div>
+
+          <div className="rounded-2xl border border-violet-500/20 bg-violet-950/30 p-6 shadow-xl backdrop-blur-xl overflow-x-auto">
+            {closeouts.length === 0 ? (
+              <div className="py-12 text-center text-xs text-violet-300/60 flex flex-col items-center gap-2">
+                <Landmark className="h-8 w-8 text-violet-500/40" />
+                <span>No se han registrado cierres de caja todavía.</span>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs text-violet-200">
+                <thead className="border-b border-violet-500/20 text-[10px] uppercase font-bold text-violet-300/60">
+                  <tr>
+                    <th className="py-3 px-4">Fecha & Hora</th>
+                    <th className="py-3 px-4">Operador / Empleado</th>
+                    <th className="py-3 px-4">Fondo Inicial</th>
+                    <th className="py-3 px-4">Ventas Efectivo</th>
+                    <th className="py-3 px-4">Devoluciones</th>
+                    <th className="py-3 px-4">Efectivo Esperado</th>
+                    <th className="py-3 px-4">Efectivo Contado</th>
+                    <th className="py-3 px-4 text-center">Diferencia / Cuadre</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-violet-500/10 font-mono">
+                  {closeouts.map((c) => {
+                    const dif = Number(c.diferencia) || 0
+                    return (
+                      <tr key={c.id} className="hover:bg-violet-900/20 transition-all">
+                        <td className="py-3 px-4 text-white font-medium">
+                          {c.createdAt ? format(new Date(c.createdAt), "dd/MM/yyyy 'a las' HH:mm 'hs'", { locale: es }) : "N/A"}
+                        </td>
+                        <td className="py-3 px-4 font-sans font-semibold text-cyan-300">
+                          {c.usuario?.nombre || "N/A"}
+                        </td>
+                        <td className="py-3 px-4">${Number(c.fondoInicial || 0).toFixed(2)}</td>
+                        <td className="py-3 px-4 text-emerald-400 font-bold">+${Number(c.totalVentasEfectivo || 0).toFixed(2)}</td>
+                        <td className="py-3 px-4 text-amber-400">-${Number(c.totalDevoluciones || 0).toFixed(2)}</td>
+                        <td className="py-3 px-4 font-bold text-white">${Number(c.efectivoEsperado || 0).toFixed(2)}</td>
+                        <td className="py-3 px-4 font-bold text-emerald-300">${Number(c.efectivoReal || 0).toFixed(2)}</td>
+                        <td className="py-3 px-4 text-center">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold font-sans ${
+                              dif === 0
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                                : dif > 0
+                                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                                : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                            }`}
+                          >
+                            {dif === 0 ? "🟢 Cuadrado ($0.00)" : dif > 0 ? `🔵 Sobrante: +$${dif.toFixed(2)}` : `🔴 Faltante: -$${Math.abs(dif).toFixed(2)}`}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             )}
           </div>
         </div>

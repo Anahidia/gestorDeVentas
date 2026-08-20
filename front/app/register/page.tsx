@@ -84,7 +84,7 @@ export default function RegisterPage() {
             <Store className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-violet-200 to-blue-400 bg-clip-text text-transparent">
-            Registro en Los Siete Díaz
+            Registro en Fullstore
           </h1>
           <p className="mt-1 text-xs text-violet-300/70">
             Crea tu comercio o únete al equipo con tu código de invitación

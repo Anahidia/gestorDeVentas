@@ -115,6 +115,27 @@ export default function MisEncargosPage() {
                       <p className="font-bold text-white">{order.clienteNombre} {order.clienteTelefono ? `(${order.clienteTelefono})` : ""}</p>
                     </div>
                   )}
+
+                  {/* Financial Breakdown for Order */}
+                  <div className="grid grid-cols-3 gap-2 bg-violet-950/60 p-2 rounded-lg text-center my-1 border border-violet-800/20">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-blue-200/60">Precio Total</span>
+                      <span className="font-bold text-white">${Number(order.precioTotal || (order.producto?.precio * order.cantidad) || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-emerald-300">Seña Pagada</span>
+                      <span className="font-bold text-emerald-400">
+                        {Number(order.sena) > 0 ? `+$${Number(order.sena).toFixed(2)}` : "Sin Seña"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-cyan-300">Restante</span>
+                      <span className="font-extrabold text-cyan-300">
+                        ${Number(order.montoRestante ?? (order.producto?.precio * order.cantidad - (order.sena || 0))).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
                   {order.notas && (
                     <div>
                       <span className="text-blue-200/60 font-semibold">Notas:</span>
@@ -122,8 +143,8 @@ export default function MisEncargosPage() {
                     </div>
                   )}
                   <div className="flex justify-between text-[11px] text-blue-200/60 border-t border-blue-500/10 pt-2 mt-1">
-                    <span>Creado: {format(new Date(order.createdAt), "PPP", { locale: es })}</span>
-                    <span>Expira: {format(new Date(order.fechaExpiracion), "PPP", { locale: es })}</span>
+                    <span>Creado: {order.createdAt ? format(new Date(order.createdAt), "dd/MM/yyyy", { locale: es }) : "N/A"}</span>
+                    <span className="font-bold text-amber-300">Retiro Máx: {order.fechaExpiracion ? format(new Date(order.fechaExpiracion), "dd/MM/yyyy", { locale: es }) : "N/A"}</span>
                   </div>
                 </div>
               </div>
@@ -134,13 +155,13 @@ export default function MisEncargosPage() {
                     onClick={() => handleComplete(order.id)}
                     disabled={processingId === `complete-${order.id}`}
                     size="sm"
-                    className="flex-1 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 rounded-xl"
+                    className="flex-1 text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 rounded-xl"
                   >
                     {processingId === `complete-${order.id}` ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <>
-                        <CheckCircle className="h-3.5 w-3.5 mr-1" /> Completar
+                        <CheckCircle className="h-3.5 w-3.5 mr-1" /> Cobrar Restante (${Number(order.montoRestante ?? (order.producto?.precio * order.cantidad - (order.sena || 0))).toFixed(2)}) & Entregar
                       </>
                     )}
                   </Button>

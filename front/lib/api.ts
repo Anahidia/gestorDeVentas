@@ -353,6 +353,28 @@ export class ApiClient {
       body: JSON.stringify({ codigoEmpleado }),
     })
   }
+
+  async refundSale(id: string) {
+    return this.request(`/sales/${id}/refund`, {
+      method: "PATCH",
+    })
+  }
+
+  // ================= CIERRE DE CAJA / ARQUEO =================
+  async getCashCloseoutsCurrentSummary() {
+    return this.request("/cash-closeouts/current-summary")
+  }
+
+  async createCashCloseout(data: { fondoInicial: number; efectivoReal: number; notas?: string }) {
+    return this.request("/cash-closeouts", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getCashCloseouts() {
+    return this.request("/cash-closeouts")
+  }
 }
 
 export const api = new ApiClient()

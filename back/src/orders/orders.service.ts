@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, OnModuleInit } from "@nestjs/common"
 import { Repository, LessThan } from "typeorm"
 import { Order, OrderStatus } from "./entities/order.entity"
+import { Sale, SaleStatus } from "../sales/entities/sale.entity"
+import { SaleItem } from "../sales/entities/sale-item.entity"
 import { ProductsService } from "../products/products.service"
 import { CreateOrderDto } from "./dto/create-order.dto"
 import { User, UserRole } from "../users/entities/user.entity"
@@ -11,6 +13,12 @@ export class OrdersService implements OnModuleInit {
   constructor(
     @InjectRepository(Order)
     private readonly ordersRepository: Repository<Order>,
+
+    @InjectRepository(Sale)
+    private readonly salesRepository: Repository<Sale>,
+
+    @InjectRepository(SaleItem)
+    private readonly saleItemsRepository: Repository<SaleItem>,
 
     @Inject(forwardRef(() => ProductsService))
     private readonly productsService: ProductsService,
@@ -56,18 +64,58 @@ export class OrdersService implements OnModuleInit {
       await this.productsService.reserveStock(createOrderDto.productoId, createOrderDto.cantidad)
     }
 
-    const fechaExpiracion = new Date()
-    fechaExpiracion.setDate(fechaExpiracion.getDate() + 7)
+    const precioTotal = Number(product.precio || 0) * Number(createOrderDto.cantidad || 1)
+    const sena = Number(createOrderDto.sena || 0)
+    const montoRestante = Math.max(0, precioTotal - sena)
+
+    let fechaExpiracion = new Date()
+    if (createOrderDto.fechaExpiracion) {
+      fechaExpiracion = new Date(createOrderDto.fechaExpiracion)
+    } else {
+      fechaExpiracion.setDate(fechaExpiracion.getDate() + 7)
+    }
 
     const order = this.ordersRepository.create({
       ...createOrderDto,
+      precioTotal,
+      sena,
+      montoRestante,
       vendedorId,
       businessId,
       fechaExpiracion,
       status: OrderStatus.ACTIVO,
     })
 
-    return this.ordersRepository.save(order)
+    const savedOrder = await this.ordersRepository.save(order)
+
+    // Si se dejó seña, registrar una VENTA de seña (SENA_ENCARGO)
+    if (sena > 0) {
+      try {
+        const saleItem = this.saleItemsRepository.create({
+          productoId: product.id,
+          cantidad: createOrderDto.cantidad,
+          precioUnitario: sena / createOrderDto.cantidad,
+          subtotal: sena,
+          talle: createOrderDto.talle,
+        })
+
+        const senaSale = this.salesRepository.create({
+          total: sena,
+          status: SaleStatus.SENA_ENCARGO,
+          vendedorId,
+          businessId,
+          encargoId: savedOrder.id,
+          items: [saleItem],
+          notas: `Seña por encargo: ${product.nombre}${createOrderDto.clienteNombre ? ` (Cliente: ${createOrderDto.clienteNombre})` : ""}`,
+        })
+
+        await this.salesRepository.save(senaSale)
+      } catch (err) {
+        console.warn("Could not record sena sale:", err)
+      }
+    }
+
+    return savedOrder
   }
 
   async findAll(businessId?: string): Promise<Order[]> {
@@ -121,6 +169,35 @@ export class OrdersService implements OnModuleInit {
     } else {
       await this.productsService.releaseStock(order.productoId, order.cantidad)
       await this.productsService.decreaseStock(order.productoId, order.cantidad)
+    }
+
+    const montoRestante = Number(order.montoRestante ?? (order.precioTotal - order.sena)) || 0
+
+    // Si había un monto restante por cobrar, registrar como VENTA final
+    if (montoRestante > 0) {
+      try {
+        const saleItem = this.saleItemsRepository.create({
+          productoId: order.productoId,
+          cantidad: order.cantidad,
+          precioUnitario: montoRestante / order.cantidad,
+          subtotal: montoRestante,
+          talle: order.talle,
+        })
+
+        const finalSale = this.salesRepository.create({
+          total: montoRestante,
+          status: SaleStatus.COMPLETADA,
+          vendedorId: order.vendedorId,
+          businessId: order.businessId,
+          encargoId: order.id,
+          items: [saleItem],
+          notas: `Pago final / Entrega encargo: ${order.producto?.nombre || "Producto"}${order.clienteNombre ? ` (Cliente: ${order.clienteNombre})` : ""}`,
+        })
+
+        await this.salesRepository.save(finalSale)
+      } catch (err) {
+        console.warn("Could not record final payment sale:", err)
+      }
     }
 
     order.status = OrderStatus.COMPLETADO

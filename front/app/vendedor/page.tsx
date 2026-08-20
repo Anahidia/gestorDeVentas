@@ -128,6 +128,8 @@ export default function VendedorPage() {
         productoId: selectedProduct.id,
         cantidad: Number.parseInt(orderForm.cantidad),
         talle: orderForm.talle || undefined,
+        sena: Number.parseFloat(orderForm.sena) || 0,
+        fechaExpiracion: orderForm.fechaExpiracion ? `${orderForm.fechaExpiracion}T23:59:59` : undefined,
         clienteNombre: orderForm.clienteNombre,
         clienteTelefono: orderForm.clienteTelefono,
         notas: orderForm.notas,
@@ -136,7 +138,15 @@ export default function VendedorPage() {
       toast.success("¡Encargo reservado exitosamente!", "Encargo Guardado")
       setIsOrderDialogOpen(false)
       setSelectedProduct(null)
-      setOrderForm({ cantidad: "1", talle: "", clienteNombre: "", clienteTelefono: "", notas: "" })
+      setOrderForm({ 
+        cantidad: "1", 
+        talle: "", 
+        sena: "0", 
+        fechaExpiracion: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], 
+        clienteNombre: "", 
+        clienteTelefono: "", 
+        notas: "" 
+      })
     } catch (error: any) {
       toast.error(error.message || "Error al crear el encargo", "Error en Encargo")
     } finally {
@@ -435,7 +445,7 @@ export default function VendedorPage() {
               <Input
                 type="number"
                 min="1"
-                value={orderForm.cantidad}
+                value={orderForm.cantidad ?? "1"}
                 onChange={(e) => setOrderForm({ ...orderForm, cantidad: e.target.value })}
                 required
                 className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
@@ -446,7 +456,7 @@ export default function VendedorPage() {
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs text-blue-200">Talle (Opcional)</Label>
                 <Select
-                  value={orderForm.talle}
+                  value={orderForm.talle ?? ""}
                   onValueChange={(val) => setOrderForm({ ...orderForm, talle: val })}
                 >
                   <SelectTrigger className="border-blue-500/20 bg-violet-950/40 text-xs text-white">
@@ -467,7 +477,7 @@ export default function VendedorPage() {
               <Label className="text-xs text-blue-200">Nombre del Cliente *</Label>
               <Input
                 placeholder="Ej. María López"
-                value={orderForm.clienteNombre}
+                value={orderForm.clienteNombre ?? ""}
                 onChange={(e) => setOrderForm({ ...orderForm, clienteNombre: e.target.value })}
                 required
                 className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
@@ -478,17 +488,61 @@ export default function VendedorPage() {
               <Label className="text-xs text-blue-200">Teléfono del Cliente</Label>
               <Input
                 placeholder="+54 9 ..."
-                value={orderForm.clienteTelefono}
+                value={orderForm.clienteTelefono ?? ""}
                 onChange={(e) => setOrderForm({ ...orderForm, clienteTelefono: e.target.value })}
                 className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
               />
             </div>
 
+            {/* Seña y Fecha Máxima de Retiro */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs text-blue-200">Seña Ingresada ($) *</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00 (sin seña)"
+                  value={orderForm.sena ?? "0"}
+                  onChange={(e) => setOrderForm({ ...orderForm, sena: e.target.value })}
+                  className="border-blue-500/20 bg-violet-950/40 text-xs text-emerald-400 font-bold"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs text-blue-200">Fecha Máx. de Retiro *</Label>
+                <Input
+                  type="date"
+                  value={orderForm.fechaExpiracion ?? ""}
+                  onChange={(e) => setOrderForm({ ...orderForm, fechaExpiracion: e.target.value })}
+                  className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
+                />
+              </div>
+            </div>
+
+            {/* Calculations Card */}
+            {selectedProduct && (
+              <div className="rounded-xl border border-cyan-500/30 bg-cyan-950/30 p-3 text-xs flex flex-col gap-1">
+                <div className="flex justify-between text-violet-200">
+                  <span>Precio Total Encargo:</span>
+                  <span className="font-bold text-white">${(selectedProduct.precio * (Number(orderForm.cantidad) || 1)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-emerald-300">
+                  <span>Seña Cobrada (Ingresa a Caja):</span>
+                  <span className="font-bold">+${(Number(orderForm.sena) || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-cyan-300 border-t border-cyan-500/20 pt-1 mt-1 font-bold">
+                  <span>Restante a cobrar al retiro:</span>
+                  <span>${Math.max(0, (selectedProduct.precio * (Number(orderForm.cantidad) || 1)) - (Number(orderForm.sena) || 0)).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-1.5">
-              <Label className="text-xs text-blue-200">Notas / Seña</Label>
+              <Label className="text-xs text-blue-200">Notas Adicionales</Label>
               <Input
-                placeholder="Ej. Dejó $500 de seña, retira el viernes"
-                value={orderForm.notas}
+                placeholder="Ej. Retira el cliente el viernes por la tarde"
+                value={orderForm.notas ?? ""}
                 onChange={(e) => setOrderForm({ ...orderForm, notas: e.target.value })}
                 className="border-blue-500/20 bg-violet-950/40 text-xs text-white"
               />

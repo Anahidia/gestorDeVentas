@@ -18,7 +18,7 @@ export class SalesController {
 
   @Get()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.VENDEDOR)
   findAll(@Request() req) {
     return this.salesService.findAll(req.user.businessId)
   }
@@ -30,7 +30,7 @@ export class SalesController {
 
   @Get("stats")
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.VENDEDOR)
   getStats(@Request() req) {
     return this.salesService.getStats(req.user.businessId)
   }
@@ -42,14 +42,14 @@ export class SalesController {
 
   @Patch(":id/cancel")
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.VENDEDOR)
   cancel(@Param("id") id: string) {
     return this.salesService.cancel(id)
   }
 
   @Patch(":id/refund")
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.VENDEDOR)
   refund(@Param("id") id: string) {
     return this.salesService.refund(id)
   }

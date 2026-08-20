@@ -51,7 +51,7 @@ export default function LoginPage() {
             <Store className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-violet-200 to-blue-400 bg-clip-text text-transparent">
-            Los Siete Díaz
+            Fullstore
           </h1>
           <p className="mt-1.5 text-xs text-violet-300/70 flex items-center gap-1 font-medium">
             <Sparkles className="h-3.5 w-3.5 text-cyan-400" /> Sistema de Gestión de Ventas & Comercio

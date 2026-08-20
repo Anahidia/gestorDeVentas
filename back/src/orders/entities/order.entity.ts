@@ -39,6 +39,15 @@ export class Order {
   @Column("int")
   cantidad: number
 
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  sena: number
+
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  precioTotal: number
+
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  montoRestante: number
+
   @Column({
     type: "enum",
     enum: OrderStatus,

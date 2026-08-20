@@ -1,4 +1,4 @@
-import { IsUUID, IsInt, Min, IsString, IsOptional } from "class-validator"
+import { IsUUID, IsInt, Min, IsString, IsOptional, IsNumber, IsDateString } from "class-validator"
 
 export class CreateOrderDto {
   @IsUUID()
@@ -12,6 +12,15 @@ export class CreateOrderDto {
   @IsOptional()
   talle?: string
 
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  sena?: number
+
+  @IsDateString()
+  @IsOptional()
+  fechaExpiracion?: string
+
   @IsString()
   @IsOptional()
   clienteNombre?: string
@@ -24,4 +33,3 @@ export class CreateOrderDto {
   @IsOptional()
   notas?: string
 }
-    
